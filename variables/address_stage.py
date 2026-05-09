@@ -34,7 +34,8 @@ ADDR_BOSS_ID_OFFSET = [0x48]
 Card Manager Offsets
 '''
 # The cards are held in a linked list.
-# The first value in the list holds some nonsense card.
+# The first value in the list holds some nonsense card so we start at the second card.
 ADDR_CARD_LIST_HEAD_OFFSET = [0x1C, 0x0]
+
 ADDR_NUM_CARDS_OFFSET = [0x28]
 

@@ -5,6 +5,7 @@ from .Tools import *
 from .variables.address_main_menu import *
 from .variables.address_shop import *
 from .variables.address_stage import *
+from .variables.stage_constants import *
 
 
 
@@ -29,9 +30,6 @@ class GameController:
         
         self.scorefilePtr = self.pm.base_address + ADDR_SCOREFILE_PTR
         
-        
-
-    
 
     def getStage(self) -> int:
         return self.pm.read_int(self.addrStage)
@@ -55,7 +53,12 @@ class GameController:
     def isShopActive(self) -> bool:
         return (self.pm.read_uint(self.shopPtr) != 0)
 
-    def getNumCards(self):
+    # If there is an ID for a boss then there is a boss active.
+    def isBossActive(self) -> bool:
+        boss_address = getPointerAddress(self.pm, self.enemyManagerPtr, ADDR_BOSS_ID_OFFSET)
+        return self.pm.read_int(boss_address) != 0
+
+    def getCardCount(self):
         address = getPointerAddress(self.pm, self.cardManagerPtr, ADDR_NUM_CARDS_OFFSET)
         return self.pm.read_int(address)
 
@@ -74,3 +77,30 @@ class GameController:
 
         return cards
 
+    def getShopCardCount(self) -> int:
+        shopCount = getPointerAddress(self.pm, self.shopPtr, ADDR_SHOP_ITEM_COUNT_OFFSET)
+        return self.pm.read_int(shopCount)
+
+    # Return all addresses found in the shop, they are stored in an array.
+    def getShopCards(self, numCards) -> list:
+        cards = []
+        base_address = getPointerAddress(self.pm, self.shopPtr, ADDR_SHOP_CARD_LIST_OFFSET)
+        for i in range(numCards):
+            cards.append(self.pm.read_int(base_address))
+            base_address += 0x4
+        return cards
+
+
+    # Card Unlock checks
+    '''
+    It should be noted that the order still works with card IDs despite them not being
+    formatted in the same order in the unlocked cards menu.
+    Thanks ZUN.
+    '''
+    def isCardUnlocked(self, offset) -> bool:
+        base_address = getPointerAddress(self.pm, self.scorefilePtr, ADDR_UNLOCKED_CARD_OFFSET)
+        return self.pm.read_bytes(base_address + offset, 1) == 1
+
+    def setCardUnlockState(self, new_value):
+        base_address = getPointerAddress(self.pm, self.scorefilePtr, ADDR_UNLOCKED_CARD_OFFSET)
+        self.pm.write_bytes(base_address + (offset * 4), new_value, 1)
