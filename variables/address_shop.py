@@ -7,7 +7,8 @@ Variables: Addresses used in the shop.
 # if there is no shop, this pointer will hold 0.
 ADDR_SHOP_PTR = 0x000CF2A4
 
-
+ADDR_SHOP_CURSOR1_OFFSET = [0xC]
+ADDR_SHOP_MENU_STATE_OFFSET = [0xE38]
 ADDR_SHOP_ITEM_COUNT_OFFSET = [0xA2C]
 
 # List of purchasable cards in the shop.
