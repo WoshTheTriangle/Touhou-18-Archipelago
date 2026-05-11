@@ -7,8 +7,8 @@ class GameHandler:
     bossesBeaten: dict = {}
     extraBeaten: dict = {}
     stagesUnlocked: dict = {}
-    cardsUnlocked: dict = {}
-    cardsPurchased: dict = {}
+    cardsUnlocked: list = []
+    cardsPurchased: list = []
     charactersUnlocked: dict = {}
 
     difficultiesUnlocked = []
@@ -45,9 +45,9 @@ class GameHandler:
 
         self.difficultiesUnlocked = [False, False, False, True, False]
 
-        for i in range(56):
-            self.cardsPurchased[i] = False
-            self.cardsUnlocked[i] = False
+        # No cards unlocked so far.
+        self.cardsPurchased = [False] * 56
+        self.cardsUnlocked = [False] * 56
 
         for i in range(1, 7):
             self.stagesUnlocked[i] = False
@@ -97,8 +97,61 @@ class GameHandler:
 
     def getHeldCards(self) -> list:
         numCards = self.gameController.getCardCount()
-        return self.gameController.getCards(numCards)
+        return self.gameController.getCardIDs(numCards)
+
+    def getCardAddresses(self) -> list:
+        cardCount = self.gameController.getCardCount()
+        return self.gameController.getCardAddresses(cardCount)    
+
+    '''
+        def disableNotUnlockedCards(self):
+            card_addresses = self.getCardAddresses()
+            card_ids = self.getHeldCards()
+            for i in range(len(card_addresses)):
+                if(self.cardsUnlocked[card_ids[i]] == False):
+                    self.gameController.disableCard(card_addresses[i])
+                    print("DENIED")
+
+        def enableUnlockedCards(self):
+            card_addresses = self.getCardAddresses()
+            card_ids = self.getHeldCards()
+            for i in range(len(card_addresses)):
+                if(self.cardsUnlocked[card_ids[i]] == True):
+                    self.gameController.enableCard(card_addresses[i])
+                    print("you're in")
+    '''
+    # If a card isn't unlocked but is purchased, disable it.
+    # The re-enabling is in case the card gets checked while they own a disabled one.
+    def updateCardLockState(self):
+        card_addresses = self.getCardAddresses()
+        card_ids = self.getHeldCards()
+        for i in range(len(card_addresses)):
+            if(self.cardsUnlocked[card_ids[i]] == False):
+                self.gameController.disableCard(card_addresses[i])
+                print("DENIED")
+            elif(self.cardsUnlocked[card_ids[i]] == True):
+                self.gameController.enableCard(card_addresses[i])
+                print("We are in")
+
 
     def getShopCards(self) -> list:
         numCards = self.gameController.getShopCardCount()
         return self.gameController.getShopCards(numCards)
+
+    def doesShopContainCard(self, shop_card_id) -> bool:
+        card_list = self.getShopCards()
+        return card_list.count(self.gameController.pm.base_address + shop_card_id) > 0
+
+    # Use the shop addresses found in address_shop.py for both shop card IDs
+    def setShopCard(self, original_shop_card_id, new_shop_card_id):
+        new_shop_card_id += self.gameController.pm.base_address
+        original_shop_card_id += self.gameController.pm.base_address
+        card_list = self.getShopCards()
+
+        if(card_list.count(original_shop_card_id) <= 0):
+            return
+        
+        pos = card_list.index(original_shop_card_id)
+        
+        if(pos > 0 and pos < self.gameController.getShopCardCount()):
+            self.gameController.setShopCard(pos, new_shop_card_id)

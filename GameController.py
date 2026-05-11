@@ -5,7 +5,10 @@ from .Tools import *
 from .variables.address_main_menu import *
 from .variables.address_shop import *
 from .variables.address_stage import *
+from .variables.address_cards import *
 from .variables.stage_constants import *
+from .variables.card_constants import *
+
 
 
 
@@ -76,20 +79,40 @@ class GameController:
         address = getPointerAddress(self.pm, self.cardManagerPtr, ADDR_NUM_CARDS_OFFSET)
         return self.pm.read_int(address)
 
-    # Cards are held in a linked list so we need to move throughout the list to find all IDs
-    def getCards(self, numCards) -> list:
+    # Cards are held in a linked list so we need to move throughout the list to find all references.
+    def getCardAddresses(self, numCards) -> list:
         cards = []
         address_base = getPointerAddress(self.pm, self.cardManagerPtr, ADDR_CARD_LIST_HEAD_OFFSET)
 
         for i in range(numCards):
-            id_address = getPointerAddress(self.pm, address_base, [0x4])
-
-            cards.append(self.pm.read_int(id_address))
+            cards.append(address_base)
             
             address_base = address_base + 0x4
             address_base = self.pm.read_uint(address_base)
 
         return cards
+
+    # Uses getCardAddresses to return the IDs of every card.
+    def getCardIDs(self, numCards) -> list:
+        card_id_list = []
+        card_addresses = self.getCardAddresses(numCards)
+        for card in card_addresses:
+            id_address = getPointerAddress(self.pm, card, [0x4])
+
+            card_id_list.append(self.pm.read_int(id_address))
+
+        return card_id_list
+
+    
+    def disableCard(self, cardPtr):
+        address = self.pm.read_int(cardPtr)
+        self.pm.write_int(address, VTABLE_NULL_ADDR + self.pm.base_address)
+
+    def enableCard(self, cardPtr):
+        address = self.pm.read_int(cardPtr)
+        card_id = self.pm.read_int(address + 0x4)
+        vtable_address = CARD_ID_TO_VTABLE_ADDR[card_id] + self.pm.base_address
+        self.pm.write_int(address, vtable_address)
 
 
     '''
@@ -125,8 +148,12 @@ class GameController:
     # Can be used to kick the player out of the shop purchasing option.
     def setShopMenuState(self, new_val):
         address = getPointerAddress(self.pm, self.shopPtr, ADDR_SHOP_MENU_STATE_OFFSET)
-        return self.pm.write_int(address, new_val)
+        self.pm.write_int(address, new_val)
 
+    def setShopCard(self, pos, new_shop_card_id):
+        base_address = getPointerAddress(self.pm, self.shopPtr, ADDR_SHOP_CARD_LIST_OFFSET)
+        base_address += (pos * 0x4)
+        self.pm.write_int(base_address, new_shop_card_id)
 
     '''
     Card Unlocks
