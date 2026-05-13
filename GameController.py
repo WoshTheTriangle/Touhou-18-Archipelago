@@ -1,5 +1,6 @@
 import pymem
 import pymem.exception
+import math
 
 from .Tools import *
 from .variables.address_main_menu import *
@@ -8,6 +9,7 @@ from .variables.address_stage import *
 from .variables.address_cards import *
 from .variables.stage_constants import *
 from .variables.card_constants import *
+from .variables.meta_data import *
 
 
 
@@ -17,7 +19,7 @@ class GameController:
 
     def __init__(self):
         
-        self.pm = pymem.Pymem(process_name = "th18.exe") # Change to a generic file name later ig
+        self.pm = pymem.Pymem(process_name = FILE_NAME) # Change to a generic file name later ig
        
         self.addrStage = self.pm.base_address + ADDR_CURRENT_STAGE
         self.addrLives = self.pm.base_address + ADDR_LIVES
@@ -74,6 +76,36 @@ class GameController:
     def isBossActive(self) -> bool:
         boss_address = getPointerAddress(self.pm, self.enemyManagerPtr, ADDR_BOSS_ID_OFFSET)
         return self.pm.read_int(boss_address) != 0
+
+    # Returns current character.
+    # 0 - Reimu
+    # 1 - Marisa
+    # 2 - Sakuya
+    # 3 - Sanae
+    def getCharacter(self):
+        return self.pm.read_int(self.pm.base_address + ADDR_CURRENT_CHARACTER)
+
+    # New speed is in the form [unfocused_speed, focused_speed]
+    def setSpeed(self, new_speed):
+        address = self.pm.read_int(self.pm.base_address + ADDR_PLAYER_PTR)
+        address += 0x477B4
+        speed = new_speed[0]
+        self.pm.write_int(address + 0, speed)
+        diagonal_speed = int(new_speed[0]/math.sqrt(2))
+        self.pm.write_int(address + 4, diagonal_speed)
+
+        speed = new_speed[1]
+        self.pm.write_int(address + 8, speed)
+        diagonal_speed = int(new_speed[1]/math.sqrt(2))
+        self.pm.write_int(address + 12, diagonal_speed)
+
+    def resetSpeed(self):
+        speed_list = CHARACTER_SPEEDS[self.getCharacter()]
+
+        address = self.pm.read_int(self.pm.base_address + ADDR_PLAYER_PTR)
+        address += 0x477B4
+        for i in range(4):
+            self.pm.write_int(address + (i * 4), speed_list[i])
 
     def getCardCount(self):
         address = getPointerAddress(self.pm, self.cardManagerPtr, ADDR_NUM_CARDS_OFFSET)

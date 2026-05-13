@@ -92,6 +92,12 @@ class GameHandler:
         newFunds = self.gameController.getFunds() + value
         self.gameController.setFunds(newFunds)
 
+    def setSpeed(self, new_speed):
+        self.gameController.setSpeed(new_speed)
+
+    def resetSpeed(self):
+        self.gameController.resetSpeed()
+
     def isShopActive(self) -> bool:
         return self.gameController.isShopActive()
 
