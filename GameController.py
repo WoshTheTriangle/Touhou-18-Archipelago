@@ -45,13 +45,13 @@ class GameController:
     def getLives(self) -> int:
         return self.pm.read_int(self.addrLives)
 
-    def setLives(self, value):
+    def setLives(self, value) -> None:
         self.pm.write_int(self.addrLives, value)
 
     def getFunds(self) -> int:
         return self.pm.read_int(self.addrFunds)
 
-    def setFunds(self, value):
+    def setFunds(self, value) -> None:
         self.pm.write_int(self.addrFunds, value)
 
     # Return values follow the character constants in stage_constants.py
@@ -61,7 +61,8 @@ class GameController:
     '''
     Main Menu Info
     '''
-
+    def check_if_in_game(self) -> bool: #To Be Added
+        return False
 
     '''
     Stage and Card Info
@@ -82,11 +83,11 @@ class GameController:
     # 1 - Marisa
     # 2 - Sakuya
     # 3 - Sanae
-    def getCharacter(self):
+    def getCharacter(self) -> None:
         return self.pm.read_int(self.pm.base_address + ADDR_CURRENT_CHARACTER)
 
     # New speed is in the form [unfocused_speed, focused_speed]
-    def setSpeed(self, new_speed):
+    def setSpeed(self, new_speed) -> None:
         address = self.pm.read_int(self.pm.base_address + ADDR_PLAYER_PTR)
         address += 0x477B4
         speed = new_speed[0]
@@ -99,7 +100,7 @@ class GameController:
         diagonal_speed = int(new_speed[1]/math.sqrt(2))
         self.pm.write_int(address + 12, diagonal_speed)
 
-    def resetSpeed(self):
+    def resetSpeed(self) -> None:
         speed_list = CHARACTER_SPEEDS[self.getCharacter()]
 
         address = self.pm.read_int(self.pm.base_address + ADDR_PLAYER_PTR)
@@ -107,7 +108,7 @@ class GameController:
         for i in range(4):
             self.pm.write_int(address + (i * 4), speed_list[i])
 
-    def getCardCount(self):
+    def getCardCount(self) -> None:
         address = getPointerAddress(self.pm, self.cardManagerPtr, ADDR_NUM_CARDS_OFFSET)
         return self.pm.read_int(address)
 
@@ -136,11 +137,11 @@ class GameController:
         return card_id_list
 
     
-    def disableCard(self, cardPtr):
+    def disableCard(self, cardPtr) -> None:
         address = self.pm.read_int(cardPtr)
         self.pm.write_int(address, VTABLE_NULL_ADDR + self.pm.base_address)
 
-    def enableCard(self, cardPtr):
+    def enableCard(self, cardPtr) -> None:
         address = self.pm.read_int(cardPtr)
         card_id = self.pm.read_int(address + 0x4)
         vtable_address = CARD_ID_TO_VTABLE_ADDR[card_id] + self.pm.base_address
@@ -178,11 +179,11 @@ class GameController:
         return self.pm.read_int(address)
 
     # Can be used to kick the player out of the shop purchasing option.
-    def setShopMenuState(self, new_val):
+    def setShopMenuState(self, new_val) -> None:
         address = getPointerAddress(self.pm, self.shopPtr, ADDR_SHOP_MENU_STATE_OFFSET)
         self.pm.write_int(address, new_val)
 
-    def setShopCard(self, pos, new_shop_card_id):
+    def setShopCard(self, pos, new_shop_card_id) -> None:
         base_address = getPointerAddress(self.pm, self.shopPtr, ADDR_SHOP_CARD_LIST_OFFSET)
         base_address += (pos * 0x4)
         self.pm.write_int(base_address, new_shop_card_id)
@@ -198,6 +199,6 @@ class GameController:
         base_address = getPointerAddress(self.pm, self.scorefilePtr, ADDR_UNLOCKED_CARD_OFFSET)
         return self.pm.read_bytes(base_address + id, 1) == 1
 
-    def setCardUnlockState(self, id, new_value):
+    def setCardUnlockState(self, id, new_value) -> None:
         base_address = getPointerAddress(self.pm, self.scorefilePtr, ADDR_UNLOCKED_CARD_OFFSET)
         self.pm.write_bytes(base_address + id, new_value, 1)

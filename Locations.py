@@ -1,22 +1,34 @@
 from typing import Dict
 
-#from BaseClasses import Location
+from BaseClasses import ItemClassification, Location
+
 from .variables.card_constants import *
 from .variables.meta_data import *
 from .variables.stage_constants import *
-'''
+
 class TouhouUMLocation(Location):
     game: str = SHORT_NAME
-'''
-def create_all_locations(world):
-    print("soon")
 
+# Just testing one region for now.
+def create_all_locations(world) -> None:
+    region_ofchoice = world.get_region("Test")
+    region_ofchoice.add_locations(location_table, TouhouUMLocation)
+
+# Grab a subset of location_table based off names given.
+def get_location_names_with_ids(location_names: list[str]) -> dict[str, int | None]:
+    location_dict = {}
+    for name in location_names:
+        location_dict[name] = location_table[name]
+    return location_dict
+
+# Helper function to make stage location names easier to get.
 def write_boss_location_name(character: str, check: str, difficulty: str = None) -> str:
     if(difficulty != None):
         return f"[{difficulty}][{character}] - {check}"
     return f"[{character}] - {check}"
 
 location_groups : Dict[str, set[str]] = {}
+
 
 location_offset = 1
 location_table = {} # Name to ID 
@@ -58,7 +70,6 @@ for difficulty in DIFFICULTY_NAMES:
 
 # Card Purchase Locations
 for card in ABILITY_CARD_LIST:
-    print(card)
     card_name = CARD_ID_TO_NAME[card]
     location = f"Purchased {card_name}"
     location_table[location] = location_offset

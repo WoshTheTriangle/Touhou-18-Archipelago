@@ -9,4 +9,9 @@ class TouhouUMWebWorld(WebWorld):
 
     setup_en = [Tutorial(
         "Multiworld Setup Guide",
+        "A guide to setting up Touhou 18 for MultiWorld.",
+        "English",
+        "setup_en.md",
+        "setup/en",
+        ["WoshTheTriangle"],
     )]

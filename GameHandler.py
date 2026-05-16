@@ -16,8 +16,6 @@ class GameHandler:
     extraUnlocked: dict = {}
     previousLocationChecked = []
 
-
-
     def __init__(self):
         ''' 
         This class is a wrapper for GameController
@@ -28,8 +26,11 @@ class GameHandler:
         self.reset()
 
 
+    def reconnect(self):
+        self.gameController = gameController()
+        
 
-    def reset(self):
+    def reset(self) -> None:
         for character in CHARACTERS:
             self.bossesBeaten[character] = [[False, False], [False, False], [False, False], 
                                             [False, False], [False, False], [False, False],
@@ -68,7 +69,7 @@ class GameHandler:
 
         return beenDefeated
 
-    def setCurrentBossDefeated(self, counter):
+    def setCurrentBossDefeated(self, counter) -> None:
         currentStage = self.gameController.getStage()
         
         if(currentStage < 7):
@@ -85,17 +86,17 @@ class GameHandler:
     def getFunds(self) -> int:
         return self.gameController.getFunds()
 
-    def setFunds(self, value):
+    def setFunds(self, value) -> None:
         self.gameController.setFunds(value)
 
-    def addFunds(self, value):
+    def addFunds(self, value) -> None:
         newFunds = self.gameController.getFunds() + value
         self.gameController.setFunds(newFunds)
 
-    def setSpeed(self, new_speed):
+    def setSpeed(self, new_speed) -> None:
         self.gameController.setSpeed(new_speed)
 
-    def resetSpeed(self):
+    def resetSpeed(self) -> None:
         self.gameController.resetSpeed()
 
     def isShopActive(self) -> bool:
@@ -128,7 +129,7 @@ class GameHandler:
     '''
     # If a card isn't unlocked but is purchased, disable it.
     # The re-enabling is in case the card gets checked while they own a disabled one.
-    def updateCardLockState(self):
+    def updateCardLockState(self) -> None:
         card_addresses = self.getCardAddresses()
         card_ids = self.getHeldCards()
         for i in range(len(card_addresses)):
@@ -149,7 +150,7 @@ class GameHandler:
         return card_list.count(self.gameController.pm.base_address + shop_card_id) > 0
 
     # Use the shop addresses found in address_shop.py for both shop card IDs
-    def setShopCard(self, original_shop_card_id, new_shop_card_id):
+    def setShopCard(self, original_shop_card_id, new_shop_card_id) -> None:
         new_shop_card_id += self.gameController.pm.base_address
         original_shop_card_id += self.gameController.pm.base_address
         card_list = self.getShopCards()

@@ -1,11 +1,13 @@
 from worlds.AutoWorld import World
-from worlds.LauncherComponent import Component, components, launch_subprocess, Type
-from .Items import TItem, get_items_by_category, item_table, item_groups
-from .Locations import location_table
-from .Options import Th18Options
-from .Regions import create_regions
-from .Rules import set_rules
+from worlds.LauncherComponents import Component, components, launch_subprocess, Type
+
+from collections.abc import Mapping
+
+from .WebWorld import TouhouUMWebWorld
+from . import Items, Locations, Regions, Rules, Options as UMOptions
 from .variables.meta_data import *
+
+from typing import Any
 
 def launch_client():
     from worlds.th18.Client import launch
@@ -18,5 +20,43 @@ components.append(Component(
     component_type=Type.CLIENT
 ))
 
-class TWorld(World):
+class TouhouUMWorld(World):
+    """
+    Cool game. Toho roguelike.
+    """
     game = DISPLAY_NAME
+
+    web = TouhouUMWebWorld()
+
+    item_name_to_id = Items.get_item_to_id_dict()
+    location_name_to_id = Locations.location_table
+
+    origin_region_name = "Menu"
+
+    options_dataclass = UMOptions.Th18Options
+    options: UMOptions.Th18Options
+
+    # Manditory Arcipelago World methods    
+
+    def generate_early(self) -> None:
+        print("soon tm")
+
+    def set_rules(self) -> None:
+        print("soon tm")
+
+    def create_regions(self) -> None:
+        Regions.create_regions(self)
+        Locations.create_all_locations(self)
+
+    def create_items(self) -> None:
+        Items.create_all_items(self)
+
+    def create_item(self, name: str) -> Items.TouhouUMItem:
+        return Items.create_item_with_correct_classification(self, name)
+
+    def get_filler_item_name(self) -> str:
+        return Items.get_random_filler_item_name(self)
+
+    def fill_slot_data(self) -> Mapping[str, Any]:
+        data = {}
+        return data

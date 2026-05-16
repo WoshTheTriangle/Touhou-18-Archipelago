@@ -22,19 +22,77 @@ class TouhouUMItemData(NamedTuple):
     max_quantity: int = 1
     weight: int = 1
 
-def get_random_filler_item_name(world):
-    print("to be made")
+# May be edited to exclude certain traps.
+def get_random_trap() -> str:
+    trap_list = []
+    for name in trap_table.keys():
+        trap_list.append(name)
+    return world.random.choice(trap_list).__str__()
 
-def create_items(world):
-    print("to be made")
+# May be edited to exclude certain fillers.
+def get_random_filler() -> str:
+    filler_list = []
+    for name in filler_table.keys():
+        filler_list.append(name)
+    return world.random.choice(filler_list).__str__()
+
+
+def get_random_filler_item_name(world) -> str:
+    if world.random.randint(0, 99) < world.options.trap_chance:
+        return get_random_trap()
+    return get_random_filler()
+
+def create_item_with_correct_classification(world, name: str) -> TouhouUMItem:
+    item = item_table[name]
+    return TouhouUMItem(name, item.classification, code, world.player)
+
+
+def create_all_items(world) -> None:
+    item_pool: List[Item] = []
+    for item, data in item_table:
+        for i in range(data.max_quantity):
+            item_pool.append(world.create_item(item))
+    
+    item_length = len(item_pool)
+
+    num_locations = len(world.get_unfilled_locations(world.player))
+
+    num_filler_needed = num_locations - item_length
+
+    for i in range(num_filler_needed):
+        filler_name = world.get_random_filler_item_name(world)
+        item_pool.append(world.create_item(filler_name))
+
+
+    world.multiworld.itempool += item_pool
+
+    # Finnicky
+    reimu = None
+    for item in item_pool:
+        if item.name == "Reimu":
+            reimu = item
+            break
+    world.push_precollected(reimu)
+
+    # world.create_item()
+    # world.push_precollected()
+    # world.start_inventory_from_pool will take an initial item from the pool
+    # also need to use push_precollected
+
+def get_item_to_id_dict() -> Dict[str, int]:
+    item_dict: Dict[str, int] = {}
+    for name, data in item_table.items():
+        item_dict.setdefault(name, data.code)
+    return item_dict
+
 
 item_table: Dict[str, TouhouUMItemData] = {
     # Useful for Stage Completion
     "+1 Max Life" : TouhouUMItemData(CATEGORY_STAGE, 1, ItemClassification.progression, 8),
     "+1 Max Bomb" : TouhouUMItemData(CATEGORY_STAGE, 2, ItemClassification.progression, 8),
     "+1 Continue" : TouhouUMItemData(CATEGORY_ITEM, 3, ItemClassification.useful, 5),
-    "Lower Difficulty" : TouhouUMItem(CATEGORY_ITEM, 4, ItemClassification.progression, 3), #maybe useful later idk
-    "Extra Starting Card Slot" : TouhouUMItem(CATEGORY_ITEM, 5, ItemClassification.useful, 2),
+    "Lower Difficulty" : TouhouUMItemData(CATEGORY_ITEM, 4, ItemClassification.progression, 3), #maybe useful later idk
+    "Extra Starting Card Slot" : TouhouUMItemData(CATEGORY_ITEM, 5, ItemClassification.useful, 2),
     "+50 Funds" : TouhouUMItemData(CATEGORY_ITEM, 6, ItemClassification.useful, 3),
     "+75 Funds" : TouhouUMItemData(CATEGORY_ITEM, 7, ItemClassification.useful, 3),
     "+100 Funds" : TouhouUMItemData(CATEGORY_ITEM, 8, ItemClassification.useful, 3),
@@ -136,3 +194,15 @@ item_table: Dict[str, TouhouUMItemData] = {
     "50% Damage" : TouhouUMItemData(CATEGORY_TRAP, 508, ItemClassification.trap),
     "Death" : TouhouUMItemData(CATEGORY_TRAP, 509, ItemClassification.trap),
 }
+
+# Subsets of item_table
+
+filler_table: Dict[str, TouhouUMItemData] = {}
+for name, data in item_table.items():
+    if data.category == CATEGORY_FILLER:
+        filler_table.setdefault(name, data)
+
+trap_table: Dict[str, TouhouUMItemData] = {}
+for name, data in item_table.items():
+    if data.category == CATEGORY_TRAP:
+        filler_table.setdefault(name, data)
