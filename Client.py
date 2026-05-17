@@ -46,15 +46,19 @@ class TouhouUMContext(CommonContext):
     def __init__(self, server_address: Optional[str], password: Optional[str]) -> None:
         super().__init__(server_address, password)
 
-        self.item_id_to_name = None
-        self.item_name_to_id = None
-        self.location_id_to_name = None
-        self.location_name_to_id = None
+        self.items_handling = 0b111 # Items from your own world, other worlds, and starting start_inventory_from_pool
+        # This needs to be self-defined otherwise the program cannot connect to the server.
+
+        self.item_ap_id_to_name = None
+        self.item_name_to_ap_id = None
+        self.location_ap_id_to_name = None
+        self.location_name_to_ap_id = None
 
         self.options = None
         self.in_error = None
         self.is_game_running: bool = False
         self.is_connected: bool = False
+        self.loading_data_setup = True
         self.game: str = DISPLAY_NAME
 
         self.all_location_ids = []
@@ -85,6 +89,7 @@ class TouhouUMContext(CommonContext):
 
     def reset(self) -> None:
         self.in_error = False
+        self.loading_data_setup = True
 
         self.is_connected = False
         self.is_game_running = False
@@ -120,37 +125,15 @@ class TouhouUMContext(CommonContext):
        ui.base_title = f"{DISPLAY_NAME} Client"
        return ui
 
+    '''
+    Connecting to the server and game process.
+    '''
+
     async def server_auth(self, password_requested: bool = False):
         if password_requested and not self.password:
             await super().server_auth(password_requested)
         await self.get_username()
         await self.send_connect()
-
-    def on_package(self, cmd: str, args: dict):
-        """
-        Manage packages received from the server
-        This is the big one.
-        """
-        if cmd == "RoomInfo":
-            print("a")
-
-        if cmd == "Connected":
-            self.is_connected = True
-
-        if cmd == "ReceivedItems":
-            print("new")
-        elif cmd == "Retrieved":
-            print("new")
-
-        elif cmd == "DataPackage":
-            print("new")
-
-        elif cmd == "Bounced":
-            print("cool")
-        
-        if cmd == "SetReply":
-            print("g")
-
 
     def client_received_initial_server_data(self) -> bool:
         """
@@ -162,18 +145,6 @@ class TouhouUMContext(CommonContext):
         """
         return self.is_connected  
 
-    def check_victory(self) -> bool:
-        print("soon")
-
-    async def handle_received_items(self, network_index, network_items_list):
-        print("soon")
-
-    
-
-    '''
-    Async Loops
-    '''
-
     async def wait_for_initial_connection_info(self):
         """
         Waits until the client has finished the initial conversation with the server.
@@ -182,7 +153,7 @@ class TouhouUMContext(CommonContext):
             return
         
         logger.info("Waiting for a connection from the server...")
-        while not self.client_received_initial_server_data() and not self.exit_event_is_set():
+        while not self.client_received_initial_server_data() and not self.exit_event.is_set():
             await asyncio.sleep(1)
 
     # Try to attach self to a game process.
@@ -208,6 +179,82 @@ class TouhouUMContext(CommonContext):
             except Exception as e:
                 await asyncio.sleep(2)
 
+    '''
+    Handling sending packages and receiving packages.
+    '''
+
+    def on_package(self, cmd: str, args: dict):
+        """
+        Manage packages received from the server
+        This is the big one.
+        """
+        if cmd == "RoomInfo":
+            self.seed_name = args["seed_name"]
+
+        if cmd == "Connected":
+            self.previous_location_checked = args["checked_locations"]
+            self.all_location_ids = set(args["missing_locations"] + args["checked_locations"])
+            self.options = args["slot_data"] #Yaml options
+            self.is_connected = True
+            #TODO: Custom stuff and location mapping
+
+            if self.handler is not None:
+                self.handler.reset()
+
+            asyncio.create_task(self.send_msgs([{"cmd": "GetDataPackage", "games": [DISPLAY_NAME]}]))
+
+        if cmd == "ReceivedItems":
+            logger.info(f"Index packet is {args["index"]}")
+            asyncio.create_task(self.handle_received_items(args["index"], args["items"]))
+        elif cmd == "Retrieved":
+            print("new")
+
+        elif cmd == "DataPackage":
+            if not self.all_location_ids:
+                return
+            self.location_name_to_ap_id = args["data"]["games"][DISPLAY_NAME]["location_name_to_id"]
+            self.location_name_to_ap_id = {
+                name: loc_id for name, loc_id in
+                self.location_name_to_ap_id.items() if loc_id in self.all_location_ids
+            }
+            self.location_ap_id_to_name = {v: k for k, v in self.location_name_to_ap_id.items()}
+            self.item_name_to_ap_id = args["data"]["games"][DISPLAY_NAME]["item_name_to_id"]
+            self.item_ap_id_to_name = {v: k for k, v in self.item_name_to_ap_id.items()}
+
+        elif cmd == "Bounced":
+            tags = args.get("tags", [])
+        
+        if cmd == "SetReply":
+            print("g")
+
+
+    def check_victory(self) -> bool:
+        print("soon")
+
+    async def handle_received_items(self, network_index, network_items_list):
+        print("soon")
+
+    async def update_locations_checked(self):
+        new_locations = []
+
+        # If there are any new locations, add them to the list and send them to the server.
+        if new_locations:
+            self.previous_location_checked += new_location
+            await self.send_msgs([{"cmd": 'LocationChecks', "locations": new_locations}])
+
+    async def send_deathlink(self):
+        """
+        Send deathlink to the server if server is active.
+        """
+        # Don't send anything if deathlink is not enabled.
+        if not self.deathlink_enabled: return
+
+        await self.send_death(self.player_names[self.slot] + "Has died")
+
+    '''
+    Async Loops
+    '''
+
     async def main_loop(self):
         """
         The main loop that handles giving resources and updating locations.
@@ -220,8 +267,7 @@ class TouhouUMContext(CommonContext):
             no_check = True
             current_score = 0
             current_continue = 0
-            print("h")
-            while not self.exit_event.is_set() and self.handler and not self.inError:
+            while not self.exit_event.is_set() and self.handler and not self.in_error:
                 await asyncio.sleep(0.5)
                 if self.handler.inStage:
                     print("a")
@@ -231,7 +277,7 @@ class TouhouUMContext(CommonContext):
         except Exception as e:
             logger.error(f"Main ERROR: {e}")
             logger.error(traceback.format_exc())
-            self.inError = True
+            self.in_error = True
 
     async def menu_loop(self):
         """
@@ -258,67 +304,74 @@ class TouhouUMContext(CommonContext):
         """
         print("soon")
 
-    async def update_locations_checked(self):
-        print("soon")
+async def game_watcher(ctx):
+    """
+    The main client loop which watches the gameplay process.
+    If connection is lost, it will reconnect.
+    """
+    # ctx is the Context Client Instance
 
-    async def game_watcher(ctx):
-        """
-        The main client loop which watches the gameplay process.
-        If connection is lost, it will reconnect.
-        """
-        # ctx is the Context Client Instance
+    await ctx.wait_for_initial_connection_info()
+    # await ctx.initial_load_last_item_list()
 
-        await ctx.wait_for_intial_connection_info()
-       # await ctx.initial_load_last_item_list()
+    while not ctx.exit_event.is_set():
+        # Client disconnected from the server.
+        if not ctx.server:
+            logger.info("Disconnected from server, trying to reconnect...")
+            ctx.reset()
+            await ctx.wait_for_initial_connection_info()
 
-        while not ctx.exit_event.is_set():
-            # Client disconnected from the server.
-            if not ctx.server:
-                logger.info("Disconnected from server, trying to reconnect...")
-                ctx.reset()
-                await ctx.wait_for_initial_connection_info()
+        if ctx.handler == None and not ctx.in_error:
+            logger.info(f"Connecting to {SHORT_NAME}...")
+            asyncio.create_task(ctx.connect_to_game())
+            while(ctx.handler == None and not ctx.exit_event.is_set()):
+                await asyncio.sleep(1)
+
+        if ctx.in_error:
+            logger.info(f"An error has broken connection. Waiting for connection to {SHORT_NAME}")
+            ctx.handler.gameController = None
+            asyncio.create_task(ctx.reconnect_to_game())
+            await asyncio.sleep(1)
+            while(ctx.handler.gameController == None and not ctx.exit_event.is_set()):
+                await asyncio.sleep(1)
+
+        if ctx.handler and ctx.handler.gameController:
+            ctx.in_error = False
+
+            if not ctx.is_game_running:
+                ctx.is_game_running = ctx.handler.gameController.check_if_in_game()
+                await asyncio.sleep(1)
+                continue
+
+        if ctx.loading_data_setup:
+            logger.info(f"{SHORT_NAME} process found. Beginning game loop.")
+            ctx.loading_data_setup = False
+            continue
             
-            if ctx.handler == None and not ctx.inError:
-                logger.info(f"Connecting to {SHORT_NAME}...")
-                asyncio.create_task(ctx.connect_to_game())
-                while(ctx.handler == None and not ctx.exit_event_is_set()):
-                    await asyncio.sleep(1)
 
-            if ctx.inError:
-                logger.info(f"An error has broken connection. Waiting for connection to {SHORT_NAME}")
-                ctx.handler.gameController = None
-                asyncio.create_task(ctx.reconnect_to_game())
-                await asyncio.sleep(1)
-                while(ctx.handler.gameController == None and not ctx.exit_event_is_set()):
-                    await asyncio.sleep(1)
+        client_loops = []
+        loops.append(asyncio.create_task(ctx.main_loop()))
+        loops.append(asyncio.create_task(ctx.menu_loop()))
+        # Add more loops later
 
-            if ctx.handler and ctx.handler.gameController:
-                logger.info(f"{SHORT_NAME} process found. Beginning game loop.")
-                ctx.inError = False
+        await ctx.update_locations_checked()
+        #TODO: Update Stage List
 
-            client_loops = []
-            loops.append(asyncio.create_task(ctx.main_loop()))
-            loops.append(asyncio.create_task(ctx.menu_loop()))
-            # Add more loops later
+        #TODO: Death Link stuff
 
-            await ctx.update_locations_checked()
-            # Update Stage List
+        #TODO: Edit handler as needed
 
-            # Death Link stuff
+        # If all is going well, we can just loop forever.
+        while not ctx.exit_event.is_set() and ctx.server and not ctx.in_error:
+            await asyncio.sleep(1)
 
-            # Edit handler as needed
-
-            # If all is going well, we can just loop forever.
-            while not ctx.exit_event.is_set() and ctx.server and not ctx.inError:
-                await asyncio.sleep(1)
-
-            # We left the infinite loop so either the player left, server broke, or an error occurred.
-            # End all loops.
-            for loop in client_loops:
-                try:
-                    loop.cancel()
-                except:
-                    pass
+        # We left the infinite loop so either the player left, server broke, or an error occurred.
+        # End all loops.
+        for loop in client_loops:
+            try:
+                loop.cancel()
+            except:
+                pass
 
 def launch():
     """

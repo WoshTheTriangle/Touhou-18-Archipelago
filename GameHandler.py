@@ -24,11 +24,16 @@ class GameHandler:
 
         self.gameController = GameController()
         self.reset()
+        self.init_game()
 
 
     def reconnect(self):
         self.gameController = gameController()
+        self.init_game(self)
         
+    def init_game(self):
+        print("init")
+        #TODO
 
     def reset(self) -> None:
         for character in CHARACTERS:
