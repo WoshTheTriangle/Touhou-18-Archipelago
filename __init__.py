@@ -10,7 +10,7 @@ from .variables.meta_data import *
 from typing import Any
 
 def launch_client():
-    from worlds.th18.Client import launch
+    from .Client import launch
     launch_subprocess(launch, name="GameClient")
 
 components.append(Component(
@@ -42,10 +42,10 @@ class TouhouUMWorld(World):
         print("soon tm")
 
     def set_rules(self) -> None:
-        print("soon tm")
+        Rules.set_all_rules(self)
 
     def create_regions(self) -> None:
-        Regions.create_regions(self)
+        Regions.create_and_connect_regions(self)
         Locations.create_all_locations(self)
 
     def create_items(self) -> None:

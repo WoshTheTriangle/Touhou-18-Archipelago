@@ -11,7 +11,7 @@ class TouhouUMLocation(Location):
 
 # Just testing one region for now.
 def create_all_locations(world) -> None:
-    region_ofchoice = world.get_region("Test")
+    region_ofchoice = world.get_region("Menu")
     region_ofchoice.add_locations(location_table, TouhouUMLocation)
 
 # Grab a subset of location_table based off names given.

@@ -23,14 +23,14 @@ class TouhouUMItemData(NamedTuple):
     weight: int = 1
 
 # May be edited to exclude certain traps.
-def get_random_trap() -> str:
+def get_random_trap(world) -> str:
     trap_list = []
     for name in trap_table.keys():
         trap_list.append(name)
     return world.random.choice(trap_list).__str__()
 
 # May be edited to exclude certain fillers.
-def get_random_filler() -> str:
+def get_random_filler(world) -> str:
     filler_list = []
     for name in filler_table.keys():
         filler_list.append(name)
@@ -39,28 +39,28 @@ def get_random_filler() -> str:
 
 def get_random_filler_item_name(world) -> str:
     if world.random.randint(0, 99) < world.options.trap_chance:
-        return get_random_trap()
-    return get_random_filler()
+        return get_random_trap(world)
+    return get_random_filler(world)
 
 def create_item_with_correct_classification(world, name: str) -> TouhouUMItem:
     item = item_table[name]
-    return TouhouUMItem(name, item.classification, code, world.player)
+    return TouhouUMItem(name, item.classification, item.code, world.player)
 
 
 def create_all_items(world) -> None:
     item_pool: List[Item] = []
-    for item, data in item_table:
+    for item, data in item_table.items():
         for i in range(data.max_quantity):
             item_pool.append(world.create_item(item))
     
     item_length = len(item_pool)
 
-    num_locations = len(world.get_unfilled_locations(world.player))
+    num_locations = len(world.multiworld.get_unfilled_locations(world.player))
 
     num_filler_needed = num_locations - item_length
 
     for i in range(num_filler_needed):
-        filler_name = world.get_random_filler_item_name(world)
+        filler_name = world.get_filler_item_name()
         item_pool.append(world.create_item(filler_name))
 
 
@@ -205,4 +205,4 @@ for name, data in item_table.items():
 trap_table: Dict[str, TouhouUMItemData] = {}
 for name, data in item_table.items():
     if data.category == CATEGORY_TRAP:
-        filler_table.setdefault(name, data)
+        trap_table.setdefault(name, data)

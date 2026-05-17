@@ -14,7 +14,7 @@ from CommonClient import (
     get_base_parser,
     logger,
     server_loop,
-    gui_loop
+    gui_enabled
 )
 
 from NetUtils import NetworkItem
@@ -27,6 +27,16 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
     def __init__(self, ctx):
         super().__init__(ctx)
 
+    def _cmd_test(self, reply = None) -> bool:
+        """Commands to the command line"""
+        changed = False
+
+        if reply is not None:
+            text = reply.lower()
+            logger.info(f"{text}")
+            changed = True
+
+        return changed
 
 
 class TouhouUMContext(CommonContext):
@@ -103,7 +113,7 @@ class TouhouUMContext(CommonContext):
     def reset_game_data(self):
         if self.handler == None: return
         if self.handler.gameController == None: return
-        self.is_game_running = self.handler.GameController.
+        self.is_game_running = self.handler.GameController.check_if_in_game()
 
     def make_gui(self) -> None:
        ui = super().make_gui()
@@ -164,7 +174,7 @@ class TouhouUMContext(CommonContext):
     Async Loops
     '''
 
-    async def wait_for_intial_connection_info(self):
+    async def wait_for_initial_connection_info(self):
         """
         Waits until the client has finished the initial conversation with the server.
         """
@@ -175,7 +185,7 @@ class TouhouUMContext(CommonContext):
         while not self.client_received_initial_server_data() and not self.exit_event_is_set():
             await asyncio.sleep(1)
 
-
+    # Try to attach self to a game process.
     async def connect_to_game(self) -> None:
         """
         Attach client to game process
@@ -189,14 +199,14 @@ class TouhouUMContext(CommonContext):
                 await asyncio.sleep(2)
 
     async def reconnect_to_game(self):
-    """
-    Reconnect to the game without resetting everything
-    """
-    while self.handler.gameController is None:
-        try:
-            self.handler.reconnect()
-        except Exception as e:
-            await asyncio.sleep(2)
+        """
+        Reconnect to the game without resetting everything
+        """
+        while self.handler.gameController is None:
+            try:
+                self.handler.reconnect()
+            except Exception as e:
+                await asyncio.sleep(2)
 
     async def main_loop(self):
         """
@@ -251,7 +261,7 @@ class TouhouUMContext(CommonContext):
     async def update_locations_checked(self):
         print("soon")
 
-    async def game_watcher(ctx: TouhouUMContext):
+    async def game_watcher(ctx):
         """
         The main client loop which watches the gameplay process.
         If connection is lost, it will reconnect.
@@ -259,31 +269,81 @@ class TouhouUMContext(CommonContext):
         # ctx is the Context Client Instance
 
         await ctx.wait_for_intial_connection_info()
+       # await ctx.initial_load_last_item_list()
 
-    def launch():
+        while not ctx.exit_event.is_set():
+            # Client disconnected from the server.
+            if not ctx.server:
+                logger.info("Disconnected from server, trying to reconnect...")
+                ctx.reset()
+                await ctx.wait_for_initial_connection_info()
+            
+            if ctx.handler == None and not ctx.inError:
+                logger.info(f"Connecting to {SHORT_NAME}...")
+                asyncio.create_task(ctx.connect_to_game())
+                while(ctx.handler == None and not ctx.exit_event_is_set()):
+                    await asyncio.sleep(1)
+
+            if ctx.inError:
+                logger.info(f"An error has broken connection. Waiting for connection to {SHORT_NAME}")
+                ctx.handler.gameController = None
+                asyncio.create_task(ctx.reconnect_to_game())
+                await asyncio.sleep(1)
+                while(ctx.handler.gameController == None and not ctx.exit_event_is_set()):
+                    await asyncio.sleep(1)
+
+            if ctx.handler and ctx.handler.gameController:
+                logger.info(f"{SHORT_NAME} process found. Beginning game loop.")
+                ctx.inError = False
+
+            client_loops = []
+            loops.append(asyncio.create_task(ctx.main_loop()))
+            loops.append(asyncio.create_task(ctx.menu_loop()))
+            # Add more loops later
+
+            await ctx.update_locations_checked()
+            # Update Stage List
+
+            # Death Link stuff
+
+            # Edit handler as needed
+
+            # If all is going well, we can just loop forever.
+            while not ctx.exit_event.is_set() and ctx.server and not ctx.inError:
+                await asyncio.sleep(1)
+
+            # We left the infinite loop so either the player left, server broke, or an error occurred.
+            # End all loops.
+            for loop in client_loops:
+                try:
+                    loop.cancel()
+                except:
+                    pass
+
+def launch():
+    """
+    Launch a client instance
+    """
+
+    async def main(args):
         """
-        Launch a client instance
+        Threaded client instance
         """
+        ctx = TouhouUMContext(args.connect, args.password)
+        ctx.server_task = asyncio.create_task(server_loop(ctx))
+        if gui_enabled: ctx.run_gui()
+        ctx.run_cli()
+        watcher = asyncio.create_task(
+            game_watcher(ctx),
+            name="GameProgressionWatcher"
+        )
+        await ctx.exit_event.wait()
+        await watcher
+        await ctx.shutdown()
 
-        async def main(args):
-            """
-            Threaded client instance
-            """
-            ctx = TouhouUMContext(args.connect, args.password)
-            ctx.server_task = asyncio.create_task(server_loop(ctx))
-            if gui_enabled: ctx.run_gui()
-            ctx.run_cli()
-            watcher = asyncio.create_task(
-                game_watcher(ctx)
-                name="GameProgressionWatcher"
-            )
-            await ctx.exit_event.wait()
-            await watcher
-            await ctx.shutdown()
+    parser = get_base_parser(description=SHORT_NAME + " Client")
+    args, _ = parser.parse_known_args()
 
-        parser = get_base_parser(description=SHORT_NAME + " Client")
-        args, _ = parser.parse_known_args()
-
-        colorama.init()
-        asyncio.run(main(args))
-        colorama.deinit()
+    colorama.init()
+    asyncio.run(main(args))
+    colorama.deinit()
