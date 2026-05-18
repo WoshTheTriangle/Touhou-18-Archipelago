@@ -2,7 +2,6 @@ import pymem
 import pymem.exception
 import math
 
-from .Tools import *
 from .variables.address_main_menu import *
 from .variables.address_shop import *
 from .variables.address_stage import *
@@ -10,22 +9,22 @@ from .variables.address_cards import *
 from .variables.stage_constants import *
 from .variables.card_constants import *
 from .variables.meta_data import *
-
-
+from .Tools import *
 
 
 class GameController:
     '''Memory accessing class'''
 
     def __init__(self):
-        
         self.pm = pymem.Pymem(process_name = FILE_NAME) # Change to a generic file name later ig
-       
         self.addrStage = self.pm.base_address + ADDR_CURRENT_STAGE
         self.addrLives = self.pm.base_address + ADDR_LIVES
         self.addrBombs = self.pm.base_address + ADDR_BOMBS
         self.addrFunds = self.pm.base_address + ADDR_FUNDS
         self.addrCharacter = self.pm.base_address + ADDR_CURRENT_CHARACTER
+        self.addrScore = self.pm.base_address + ADDR_SCORE
+        self.addrContinues = self.pm.base_address + ADDR_CONTINUES
+        self.addrDifficulty = self.pm.base_address + ADDR_DIFFICULTY
         
         # Large pointers which hold lots of data.
         self.shopPtr = self.pm.base_address + ADDR_SHOP_PTR
@@ -36,11 +35,16 @@ class GameController:
         
         self.scorefilePtr = self.pm.base_address + ADDR_SCOREFILE_PTR
         
+
+
     '''
     Statics
     '''
     def getStage(self) -> int:
         return self.pm.read_int(self.addrStage)
+
+    def getScore(self) -> int:
+        return self.pm.read_int(self.addrScore)
 
     def getLives(self) -> int:
         return self.pm.read_int(self.addrLives)
@@ -48,21 +52,54 @@ class GameController:
     def setLives(self, value) -> None:
         self.pm.write_int(self.addrLives, value)
 
+    def getBombs(self) -> int:
+        return self.pm.read_int(self.addrBombs)
+
+    def setBombs(self, value) -> None:
+        self.pm.write_int(self.addrBombs, value)
+
     def getFunds(self) -> int:
         return self.pm.read_int(self.addrFunds)
 
     def setFunds(self, value) -> None:
         self.pm.write_int(self.addrFunds, value)
 
+    def getDifficulty(self) -> int:
+        return self.pm.read_int(self.addrDifficulty)
+
+
     # Return values follow the character constants in stage_constants.py
+    # 0 - Reimu
+    # 1 - Marisa
+    # 2 - Sakuya
+    # 3 - Sanae
     def getCurrentCharacter(self) -> int:
         return self.pm.read_int(self.addrCharacter)
+
+    def getContinues(self) -> int:
+        return self.pm.read_int(self.addrContinues)
+
+    def setContinues(self, value) -> None:
+        self.pm.write_int(self.addrContinues, value)
 
     '''
     Main Menu Info
     '''
-    def check_if_in_game(self) -> bool: #To Be Added
-        return False
+
+    def in_main_menu(self) -> bool:
+        address = self.pm.base_address + ADDR_MAIN_MENU_PTR
+        if self.pm.read_int(address) == 0:
+            return False
+        return True
+
+    def check_if_in_game(self) -> bool: #TODO, make it actually anywhere
+        # Technically this only returns true if you are in the main menu,
+        # but it would also be really inconvenient if the player connected anywhere
+        # else so this will work just fine.
+        address = self.pm.base_address + ADDR_MAIN_MENU_PTR
+        if self.pm.read_int(address) == 0:
+            return False
+        return True
 
     '''
     Stage and Card Info
@@ -78,15 +115,7 @@ class GameController:
         boss_address = getPointerAddress(self.pm, self.enemyManagerPtr, ADDR_BOSS_ID_OFFSET)
         return self.pm.read_int(boss_address) != 0
 
-    # Returns current character.
-    # 0 - Reimu
-    # 1 - Marisa
-    # 2 - Sakuya
-    # 3 - Sanae
-    def getCharacter(self) -> None:
-        return self.pm.read_int(self.pm.base_address + ADDR_CURRENT_CHARACTER)
-
-    # New speed is in the form [unfocused_speed, focused_speed]
+    # New speed is in the form [unfocused_speed, focused_speed].
     def setSpeed(self, new_speed) -> None:
         address = self.pm.read_int(self.pm.base_address + ADDR_PLAYER_PTR)
         address += 0x477B4
@@ -100,6 +129,7 @@ class GameController:
         diagonal_speed = int(new_speed[1]/math.sqrt(2))
         self.pm.write_int(address + 12, diagonal_speed)
 
+    # Resets character to default speed.
     def resetSpeed(self) -> None:
         speed_list = CHARACTER_SPEEDS[self.getCharacter()]
 
@@ -108,11 +138,13 @@ class GameController:
         for i in range(4):
             self.pm.write_int(address + (i * 4), speed_list[i])
 
+    # Returns the amount of cards the player is holding.
     def getCardCount(self) -> None:
         address = getPointerAddress(self.pm, self.cardManagerPtr, ADDR_NUM_CARDS_OFFSET)
         return self.pm.read_int(address)
 
     # Cards are held in a linked list so we need to move throughout the list to find all references.
+    # Each node has 0x0 - *Current_Entry, 0x4 - *Next_Entry, 0x8 - *Previous_Entry
     def getCardAddresses(self, numCards) -> list:
         cards = []
         address_base = getPointerAddress(self.pm, self.cardManagerPtr, ADDR_CARD_LIST_HEAD_OFFSET)
@@ -136,11 +168,12 @@ class GameController:
 
         return card_id_list
 
-    
+    # Puts the null vtable in the vtable for a card, essentially disabling it.
     def disableCard(self, cardPtr) -> None:
         address = self.pm.read_int(cardPtr)
         self.pm.write_int(address, VTABLE_NULL_ADDR + self.pm.base_address)
 
+    # Inserts the card's regular vtable back into it, making it act as normal.
     def enableCard(self, cardPtr) -> None:
         address = self.pm.read_int(cardPtr)
         card_id = self.pm.read_int(address + 0x4)
@@ -183,6 +216,7 @@ class GameController:
         address = getPointerAddress(self.pm, self.shopPtr, ADDR_SHOP_MENU_STATE_OFFSET)
         self.pm.write_int(address, new_val)
 
+    # Doesn't override the graphic but it does override what is being purchased.
     def setShopCard(self, pos, new_shop_card_id) -> None:
         base_address = getPointerAddress(self.pm, self.shopPtr, ADDR_SHOP_CARD_LIST_OFFSET)
         base_address += (pos * 0x4)

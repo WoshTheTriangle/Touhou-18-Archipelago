@@ -58,5 +58,7 @@ class TouhouUMWorld(World):
         return Items.get_random_filler_item_name(self)
 
     def fill_slot_data(self) -> Mapping[str, Any]:
-        data = {}
+        data = self.options.as_dict(
+            "trap_chance", "split_by_difficulty"
+        )
         return data

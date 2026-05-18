@@ -22,6 +22,8 @@ from .GameHandler import *
 from .Locations import *
 from .variables.meta_data import *
 from .Items import *
+from .variables import stage_constants
+from .Tools import getStageLocationMapping
 
 class TouhouUMClientProcessor(ClientCommandProcessor):
     def __init__(self, ctx):
@@ -48,11 +50,14 @@ class TouhouUMContext(CommonContext):
 
         self.items_handling = 0b111 # Items from your own world, other worlds, and starting start_inventory_from_pool
         # This needs to be self-defined otherwise the program cannot connect to the server.
+        self.slot_data = True
 
         self.item_ap_id_to_name = None
         self.item_name_to_ap_id = None
         self.location_ap_id_to_name = None
         self.location_name_to_ap_id = None
+
+        self.able_to_check = False
 
         self.options = None
         self.in_error = None
@@ -97,6 +102,8 @@ class TouhouUMContext(CommonContext):
         self.all_location_ids = []
         self.previous_location_checked = []
         self.handler = None
+
+        self.stage_location_mappings = []
 
         self.unlocked_characters = []
         self.unlocked_cards = []
@@ -186,7 +193,7 @@ class TouhouUMContext(CommonContext):
     def on_package(self, cmd: str, args: dict):
         """
         Manage packages received from the server
-        This is the big one.
+        This is the big method.
         """
         if cmd == "RoomInfo":
             self.seed_name = args["seed_name"]
@@ -197,6 +204,7 @@ class TouhouUMContext(CommonContext):
             self.options = args["slot_data"] #Yaml options
             self.is_connected = True
             #TODO: Custom stuff and location mapping
+            self.stage_location_mappings = getStageLocationMapping(self.options["split_by_difficulty"])
 
             if self.handler is not None:
                 self.handler.reset()
@@ -204,7 +212,7 @@ class TouhouUMContext(CommonContext):
             asyncio.create_task(self.send_msgs([{"cmd": "GetDataPackage", "games": [DISPLAY_NAME]}]))
 
         if cmd == "ReceivedItems":
-            logger.info(f"Index packet is {args["index"]}")
+            # args["index"] is the next empty index of the list of items the player has.
             asyncio.create_task(self.handle_received_items(args["index"], args["items"]))
         elif cmd == "Retrieved":
             print("new")
@@ -237,9 +245,18 @@ class TouhouUMContext(CommonContext):
     async def update_locations_checked(self):
         new_locations = []
 
+        # Stage-related Locations
+        for id, map in self.stage_location_mappings.items():
+            if self.handler.isBossBeaten(*map) and id not in self.previous_location_checked:
+                new_locations.append(id)
+
+        #TODO Card-related Locations
+        
+
         # If there are any new locations, add them to the list and send them to the server.
         if new_locations:
-            self.previous_location_checked += new_location
+            print("the new")
+            self.previous_location_checked += new_locations
             await self.send_msgs([{"cmd": 'LocationChecks', "locations": new_locations}])
 
     async def send_deathlink(self):
@@ -251,27 +268,108 @@ class TouhouUMContext(CommonContext):
 
         await self.send_death(self.player_names[self.slot] + "Has died")
 
+
+    '''
+    Helper Functions
+    '''
+
+    
+
     '''
     Async Loops
     '''
 
-    async def main_loop(self):
+    async def game_loop(self):
         """
-        The main loop that handles giving resources and updating locations.
+        The main loop that handles giving stage resources and updating boss-related locations.
+        Stuff that happens while in-stage
         """
         try:
-            boss_present - False
+            boss_present = False
             current_lives = 0
             boss_counter = -1
-            resources_given = False
-            no_check = True
+            given_resources = False
             current_score = 0
             current_continue = 0
+            current_stage = 0
+
+            currently_in_stage = True
+
+            game_state = -1
+
             while not self.exit_event.is_set() and self.handler and not self.in_error:
                 await asyncio.sleep(0.5)
-                if self.handler.inStage:
-                    print("a")
-                else:
+
+                game_state = self.handler.get_game_state()
+
+                if game_state == -1:
+                        continue
+
+                # Despite there being no menus between stages, this will still
+                # reset itself every stage because the shop is its own state.
+                # self.able_to_check is going to be moderated by the menu and shop loops
+                if game_state == IN_STAGE and self.able_to_check:
+
+                    # The games have begun.
+                    # Started a new game or entered a new stage.
+                    if not currently_in_stage:
+                        currently_in_stage = True
+                        boss_counter = -1
+                        boss_present = False
+                        current_score = self.handler.getScore()
+                        current_continue = self.handler.getContinues()
+                        current_stage = self.handler.getStage()
+
+                        if False: #TODO add state to see impossible stuff
+                            self.able_to_check = False
+
+                    if not given_resources:
+                        await asyncio.sleep(0.5)
+                        #TODO give player resources
+                        given_resources = True
+                        current_lives = self.handler.getLives()
+
+                    if current_score <= self.handler.getScore() or current_continue > self.handler.getContinues():
+                        # Player's score could have lowered due to using a continue.
+                        current_score = self.handler.getScore()
+                        current_continue = self.handler.getContinues()
+                    else:
+                        # Player has restarted the game.
+                        logger.info("Restarted the game")
+                        currently_in_stage = False
+                        given_resources = False
+                        continue
+                    # Check score for that.
+
+                    # Check for if a boss appeared.
+                    if not boss_present:
+                        if self.handler.isBossActive():
+                            print("bad guy alert")
+                            boss_present = True
+                            boss_counter += 1
+                    else:
+                        if boss_present:
+                            # Boss slain.
+                            if not self.handler.isBossActive():
+                                logger.info(f"Boss killed, good job, boss killed {boss_counter}")
+                                if not self.handler.isCurrentBossDefeated(boss_counter):
+                                    self.handler.setCurrentBossDefeated(boss_counter)
+                                    print("les go")
+                                    await self.update_locations_checked()
+                                boss_present = False
+
+                    # Did the player die?
+                    new_lives = self.handler.getLives()
+                    if current_lives != new_lives:
+                        # Seems they gained a Life
+                        if current_lives > new_lives:
+                            self.handler.setBombs(3) # made up a number for now
+                        current_lives = new_lives
+
+                # Went to main menu or shop.
+                elif currently_in_stage:
+                    currently_in_stage = False
+                    given_resources = False
                     print("g")
                 
         except Exception as e:
@@ -281,10 +379,59 @@ class TouhouUMContext(CommonContext):
 
     async def menu_loop(self):
         """
-		Loop that handles the characters lock and difficulty lock, depending on the menu.
-		Also handle starting item from options
+		Loop for dealing with main menu stuff
 		"""
         print("new")
+
+        try:
+            game_state = -1
+            currently_in_menu = False
+
+            while not self.exit_event.is_set() and self.handler and not self.in_error:
+                await asyncio.sleep(0.5)
+
+                game_state = self.handler.get_game_state()
+                if game_state == IN_MENU:
+                    # Entered the menu or just connected to the game.
+                    if not currently_in_menu:
+                        logger.info("Entered main menu")
+                        self.able_to_check = True
+                        currently_in_menu = True
+
+                elif currently_in_menu:
+                    logger.info("Left main menu")
+                    currently_in_menu = False
+
+        except Exception as e:
+            logger.error(f"Main ERROR: {e}")
+            logger.error(traceback.format_exc())
+            self.in_error = True
+
+    async def shop_loop(self):
+        """
+        Loop which handles shop stuff such as editing cards 
+        and checking whether a new card was purchased or not
+        """
+        try:
+            game_state = -1
+            currently_in_shop = False
+
+            while not self.exit_event.is_set() and self.handler and not self.in_error:
+                await asyncio.sleep(0.5)
+                game_state = self.handler.get_game_state()
+                if game_state == IN_SHOP:
+                    if not currently_in_shop:
+                        currently_in_shop = True
+                        logger.info("Entered a shop")
+                    
+                elif currently_in_shop:
+                    logger.info("Left a shop")
+                    currently_in_shop = False
+
+        except Exception as e:
+            logger.error(f"Main ERROR: {e}")
+            logger.error(traceback.format_exc())
+            self.in_error = True
 
     async def trap_loop(self):
         """
@@ -349,9 +496,11 @@ async def game_watcher(ctx):
             continue
             
 
+        logger.info("Beginning main loops")
         client_loops = []
-        loops.append(asyncio.create_task(ctx.main_loop()))
-        loops.append(asyncio.create_task(ctx.menu_loop()))
+        client_loops.append(asyncio.create_task(ctx.game_loop()))
+        client_loops.append(asyncio.create_task(ctx.menu_loop()))
+        client_loops.append(asyncio.create_task(ctx.shop_loop()))
         # Add more loops later
 
         await ctx.update_locations_checked()

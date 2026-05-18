@@ -36,7 +36,7 @@ location_id_to_name = {} # ID to Name
 location_card_id_to_name_id = {}
 
 # Boss Locations
-for character in CHARCTER_NAMES:
+for character in CHARACTER_NAMES:
     stage_num = 0
     for stage in STAGE_CHECKS:
         stage_num += 1
@@ -56,7 +56,7 @@ for character in CHARCTER_NAMES:
         location_offset += 1
 
 for difficulty in DIFFICULTY_NAMES:
-    for character in CHARCTER_NAMES:
+    for character in CHARACTER_NAMES:
         stage_num = 0
         for stage in STAGE_CHECKS:
             stage_num += 1
@@ -77,7 +77,7 @@ for card in ABILITY_CARD_LIST:
     location_offset += 1
 
 # Endings Locations
-for character in CHARCTER_NAMES:
+for character in CHARACTER_NAMES:
     location = f"Completed the game as {character}"
     location_table[location] = location_offset
     location_id_to_name[location_offset] = location

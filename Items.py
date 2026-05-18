@@ -66,7 +66,7 @@ def create_all_items(world) -> None:
 
     world.multiworld.itempool += item_pool
 
-    # Finnicky
+    # Giving the player precollected items (player character and maybe some other stuff)
     reimu = None
     for item in item_pool:
         if item.name == "Reimu":
@@ -75,7 +75,7 @@ def create_all_items(world) -> None:
     world.push_precollected(reimu)
 
     # world.create_item()
-    # world.push_precollected()
+    #TODO world.push_precollected()
     # world.start_inventory_from_pool will take an initial item from the pool
     # also need to use push_precollected
 
