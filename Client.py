@@ -23,7 +23,7 @@ from .Locations import *
 from .variables.meta_data import *
 from .Items import *
 from .variables import stage_constants
-from .Tools import getStageLocationMapping
+from .Tools import getStageLocationMapping, shop_card_id_to_card_id
 
 class TouhouUMClientProcessor(ClientCommandProcessor):
     def __init__(self, ctx):
@@ -294,8 +294,15 @@ class TouhouUMContext(CommonContext):
             current_stage = 0
 
             currently_in_stage = True
+            currently_in_shop = False
 
             game_state = -1
+
+            shop_card_list = []
+            shop_card_id_list = []
+            player_card_list = []
+            
+            new_card_list = []
 
             while not self.exit_event.is_set() and self.handler and not self.in_error:
                 await asyncio.sleep(0.5)
@@ -326,6 +333,9 @@ class TouhouUMContext(CommonContext):
                     if not given_resources:
                         await asyncio.sleep(0.5)
                         #TODO give player resources
+
+                        # Disable stuff we don't have unlocked
+                        self.handler.updateCardLockState()
                         given_resources = True
                         current_lives = self.handler.getLives()
 
@@ -371,6 +381,37 @@ class TouhouUMContext(CommonContext):
                     currently_in_stage = False
                     given_resources = False
                     print("g")
+
+                '''Shop Check'''
+                if game_state == IN_SHOP:
+                    # Entering Shop
+                    if not currently_in_shop:
+                        currently_in_shop = True
+                        logger.info("Entered a shop")
+                        player_card_list = self.handler.getHeldCards()
+
+                        # Disabling cards that have been purchased before but are not unlocked.
+                        shop_card_list = self.handler.getShopCards()
+                        shop_card_id_list = shop_card_id_to_card_id(self.handler, shop_card_list)
+                        for i in range(len(shop_card_list)):   
+                            # Purchased before but not unlocked
+                            if self.handler.cardsPurchased[shop_card_id_list[i]] and not self.handler.cardsUnlocked[shop_card_id_list[i]]:
+                                self.handler.disableCard(shop_card_list[i])
+
+                # Leaving Shop    
+                elif currently_in_shop:
+                    logger.info("Left a shop")
+                    currently_in_shop = False
+                    new_card_list = self.handler.getHeldCards()
+                    print(player_card_list)
+                    print(new_card_list)
+                    # New card was purchased instead of something like a Life Card
+                    if(new_card_list[-1] != player_card_list[-1]):
+                        if not self.handler.hasCardBeenPurchased(new_card_list[-1]):
+                            self.handler.purchaseCard(new_card_list[-1])
+
+                    
+                    
                 
         except Exception as e:
             logger.error(f"Main ERROR: {e}")
@@ -407,6 +448,7 @@ class TouhouUMContext(CommonContext):
             logger.error(traceback.format_exc())
             self.in_error = True
 
+    '''
     async def shop_loop(self):
         """
         Loop which handles shop stuff such as editing cards 
@@ -414,7 +456,7 @@ class TouhouUMContext(CommonContext):
         """
         try:
             game_state = -1
-            currently_in_shop = False
+            
 
             while not self.exit_event.is_set() and self.handler and not self.in_error:
                 await asyncio.sleep(0.5)
@@ -432,6 +474,7 @@ class TouhouUMContext(CommonContext):
             logger.error(f"Main ERROR: {e}")
             logger.error(traceback.format_exc())
             self.in_error = True
+    '''
 
     async def trap_loop(self):
         """
@@ -500,7 +543,7 @@ async def game_watcher(ctx):
         client_loops = []
         client_loops.append(asyncio.create_task(ctx.game_loop()))
         client_loops.append(asyncio.create_task(ctx.menu_loop()))
-        client_loops.append(asyncio.create_task(ctx.shop_loop()))
+        #client_loops.append(asyncio.create_task(ctx.shop_loop()))
         # Add more loops later
 
         await ctx.update_locations_checked()

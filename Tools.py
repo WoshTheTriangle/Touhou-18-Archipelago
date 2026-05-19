@@ -4,6 +4,8 @@ import math
 
 from .Locations import location_table
 from .variables.stage_constants import *
+from .variables.card_constants import *
+from .GameHandler import *
 
 # Our invaluable tool to get addresses from nested pointers.    
 # Goes in the order of:
@@ -104,3 +106,12 @@ def getStageLocationMapping(split_by_difficulty: bool):
 
         mapping[id] = [character_id, stage_id, counter_id, difficulty_id]
     return mapping
+
+
+def shop_card_id_to_card_id(handler, shop_card_list: list):
+    base_address = handler.gameController.pm.base_address
+    return_list = []
+    for shop_card in shop_card_list:
+        return_list.append(SHOP_CARD_ID_TO_CARD_ID[shop_card - base_address])
+
+    return return_list

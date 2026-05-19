@@ -1,6 +1,7 @@
 from .GameController import GameController
 from .variables.card_constants import *
 from .variables.stage_constants import *
+from .variables.address_shop import *
 
 class GameHandler:
     gameController = None
@@ -186,6 +187,14 @@ class GameHandler:
         cardCount = self.gameController.getCardCount()
         return self.gameController.getCardAddresses(cardCount)    
 
+    def hasCardBeenPurchased(self, id: int) -> bool:
+        # Account for null card
+        if id == 56: return True
+
+        return self.cardsPurchased[id]
+
+    def purchaseCard(self, id) -> None:
+        self.cardsPurchased[id] = True
 
     # If a card isn't unlocked but is purchased, disable it.
     # The re-enabling is in case the card gets checked while they own a disabled one.
@@ -193,6 +202,9 @@ class GameHandler:
         card_addresses = self.getCardAddresses()
         card_ids = self.getHeldCards()
         for i in range(len(card_addresses)):
+            # Null Card
+            if card_ids[i] == 56: continue
+
             if(self.cardsUnlocked[card_ids[i]] == False):
                 self.gameController.disableCard(card_addresses[i])
                 print("DENIED")
@@ -212,7 +224,7 @@ class GameHandler:
     # Use the shop addresses found in address_shop.py for both shop card IDs
     def setShopCard(self, original_shop_card_id, new_shop_card_id) -> None:
         new_shop_card_id += self.gameController.pm.base_address
-        original_shop_card_id += self.gameController.pm.base_address
+        #original_shop_card_id += self.gameController.pm.base_address
         card_list = self.getShopCards()
 
         # Card is not present.
@@ -221,5 +233,8 @@ class GameHandler:
         
         pos = card_list.index(original_shop_card_id)
         
-        if(pos > 0 and pos < self.gameController.getShopCardCount()):
+        if(pos >= 0 and pos < self.gameController.getShopCardCount()):
             self.gameController.setShopCard(pos, new_shop_card_id)
+
+    def disableCard(self, shop_card_id) -> None:
+        self.setShopCard(shop_card_id, NULL_SHOP_ADDR)
