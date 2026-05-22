@@ -2,6 +2,7 @@ from .GameController import GameController
 from .variables.card_constants import *
 from .variables.stage_constants import *
 from .variables.address_shop import *
+from .Tools import clamp
 
 class GameHandler:
     gameController = None
@@ -122,6 +123,9 @@ class GameHandler:
                 if difficultiesUnlocked[DIFFICULTY_HARD] and current_difficulty >= 2:
                     self.bossesBeaten[self.gameController.getCurrentCharacter()][HARD][self.gameController.getStage() - 1][counter] = True
         
+    # Force the player back to the main menu from anywhere.
+    def forceToMainMenu(self) -> None:
+        self.gameController.force_to_main_menu()
 
     '''
     General Getters and Setters
@@ -146,7 +150,7 @@ class GameHandler:
         self.gameController.setFunds(value)
 
     def addFunds(self, value) -> None:
-        newFunds = self.gameController.getFunds() + value
+        newFunds = clamp(0, 100000, self.gameController.getFunds() + value)
         self.gameController.setFunds(newFunds)
 
     def getContinues(self) -> int:
@@ -166,6 +170,12 @@ class GameHandler:
 
     def setBombs(self, value) -> None:
         self.gameController.setBombs(value)
+
+    def getPower(self) -> int:
+        return self.gameController.getPower()
+
+    def setPower(self, value):
+        self.gameController.setPower(value)
 
     def getDifficulty(self) -> int:
         return self.gameController.getDifficulty()
@@ -195,6 +205,31 @@ class GameHandler:
 
     def purchaseCard(self, id) -> None:
         self.cardsPurchased[id] = True
+
+    def getCardUnlockedState(self, id: int) -> bool:
+        if id == 56: return True
+        return self.gameController.getCardUnlockedState(id)
+
+    def setCardUnlockState(self, id: int, new_state: bool) -> None:
+        if id == 56: return
+
+        new_val = 0
+        if new_state: new_val = 1
+        self.gameController.setCardUnlockState(id, new_val)
+
+    def hasCardBeenReceived(self, id: int) -> bool:
+        if id == 56: return True
+
+        return self.cardsUnlocked[id]
+
+    def receiveCard(self, id: int) -> None:
+        if id == 56: return
+
+        self.cardsUnlocked[id] = True
+
+    '''
+    Shop Settings
+    '''
 
     # If a card isn't unlocked but is purchased, disable it.
     # The re-enabling is in case the card gets checked while they own a disabled one.

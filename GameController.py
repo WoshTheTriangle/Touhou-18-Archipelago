@@ -22,6 +22,7 @@ class GameController:
         self.addrBombs = self.pm.base_address + ADDR_BOMBS
         self.addrFunds = self.pm.base_address + ADDR_FUNDS
         self.addrCharacter = self.pm.base_address + ADDR_CURRENT_CHARACTER
+        self.addrPower = self.pm.base_address + ADDR_POWER
         self.addrScore = self.pm.base_address + ADDR_SCORE
         self.addrContinues = self.pm.base_address + ADDR_CONTINUES
         self.addrDifficulty = self.pm.base_address + ADDR_DIFFICULTY
@@ -34,6 +35,8 @@ class GameController:
         self.mainMenuPtr = self.pm.base_address + ADDR_MAIN_MENU_PTR
         
         self.scorefilePtr = self.pm.base_address + ADDR_SCOREFILE_PTR
+
+        self.menuStatePtr = self.pm.base_address + ADDR_MENU_STATE
         
 
 
@@ -66,6 +69,12 @@ class GameController:
 
     def getDifficulty(self) -> int:
         return self.pm.read_int(self.addrDifficulty)
+
+    def getPower(self) -> int:
+        return self.pm.read_int(self.addrPower)
+
+    def setPower(self, value) -> None:
+        self.pm.write_int(self.addrPower, value)
 
 
     # Return values follow the character constants in stage_constants.py
@@ -100,6 +109,10 @@ class GameController:
         if self.pm.read_int(address) == 0:
             return False
         return True
+
+    # Will force the player back into the main menu when in-stage.
+    def force_to_main_menu(self) -> None:
+        self.pm.write_bytes(self.menuStatePtr, bytes([4]),1)
 
     '''
     Stage and Card Info
@@ -231,8 +244,9 @@ class GameController:
     '''
     def getCardUnlockedState(self, id) -> bool:
         base_address = getPointerAddress(self.pm, self.scorefilePtr, ADDR_UNLOCKED_CARD_OFFSET)
-        return self.pm.read_bytes(base_address + id, 1) == 1
+        print(self.pm.read_bytes(base_address + id, 1))
+        return self.pm.read_bytes(base_address + id, 1) == bytes([1])
 
     def setCardUnlockState(self, id, new_value) -> None:
         base_address = getPointerAddress(self.pm, self.scorefilePtr, ADDR_UNLOCKED_CARD_OFFSET)
-        self.pm.write_bytes(base_address + id, new_value, 1)
+        self.pm.write_bytes(base_address + id, bytes([new_value]), 1)

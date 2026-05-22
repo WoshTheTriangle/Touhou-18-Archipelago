@@ -7,6 +7,10 @@ from .variables.stage_constants import *
 from .variables.card_constants import *
 from .GameHandler import *
 
+def clamp(lower, upper, value) -> int:
+    return max(smallest, min(value, upper))
+
+
 # Our invaluable tool to get addresses from nested pointers.    
 # Goes in the order of:
 # Dereference -> Offset -> Deference -> ... -> Offset
@@ -107,6 +111,20 @@ def getStageLocationMapping(split_by_difficulty: bool):
         mapping[id] = [character_id, stage_id, counter_id, difficulty_id]
     return mapping
 
+# Returns the mapping of archipelago location IDs to card IDs for card locations.
+def getAPIDsForCards():
+    mapping = {}
+    for location_name, id in location_table.items():
+        if not "Purchased" in location_name:
+            continue
+        name = (location_name.split("Purchased ")[1])
+
+        value = NAME_TO_CARD_ID.get(name)
+        if value == None:
+            continue
+        else:
+            mapping[id] = value
+    return mapping
 
 def shop_card_id_to_card_id(handler, shop_card_list: list):
     base_address = handler.gameController.pm.base_address
