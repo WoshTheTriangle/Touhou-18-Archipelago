@@ -60,7 +60,10 @@ class GameHandler:
         self.cardsPurchased = [False] * 56
         self.cardsUnlocked = [False] * 56
 
-        for i in range(1, 7):
+        # Stage 1 is unlocked
+        self.stagesUnlocked[1] = True
+
+        for i in range(2, 7):
             self.stagesUnlocked[i] = False
 
             
@@ -123,8 +126,12 @@ class GameHandler:
                 if difficultiesUnlocked[DIFFICULTY_HARD] and current_difficulty >= 2:
                     self.bossesBeaten[self.gameController.getCurrentCharacter()][HARD][self.gameController.getStage() - 1][counter] = True
         
+    def isStageUnlocked(self, stage_num) -> bool:
+        return self.stagesUnlocked[stage_num]
+    
     # Force the player back to the main menu from anywhere.
     def forceToMainMenu(self) -> None:
+        print("Force A")
         self.gameController.force_to_main_menu()
 
     '''
@@ -136,6 +143,9 @@ class GameHandler:
 
     def getStage(self) -> int:
         return self.gameController.getStage()
+
+    def getTimeInStage(self) -> int:
+        return self.gameController.getTimeInStage()
 
     def getCurrentCharacter() -> int:
         return self.gameController.getCurrentCharacter()
@@ -160,13 +170,13 @@ class GameHandler:
         self.gameController.setContinues(value)
 
     def getLives(self) -> int:
-        self.gameController.getLives()
+        return self.gameController.getLives()
 
     def setLives(self, value) -> None:
         self.gameController.setLives(value)
 
     def getBombs(self) -> int:
-        self.gameController.getBombs()
+        return self.gameController.getBombs()
 
     def setBombs(self, value) -> None:
         self.gameController.setBombs(value)

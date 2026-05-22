@@ -8,7 +8,7 @@ from .variables.card_constants import *
 from .GameHandler import *
 
 def clamp(lower, upper, value) -> int:
-    return max(smallest, min(value, upper))
+    return max(lower, min(value, upper))
 
 
 # Our invaluable tool to get addresses from nested pointers.    

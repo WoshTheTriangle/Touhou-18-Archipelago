@@ -220,7 +220,7 @@ class TouhouUMContext(CommonContext):
             # args["index"] is the next empty index of the list of items the player has.
             asyncio.create_task(self.handle_received_items(args["index"], args["items"]))
         elif cmd == "Retrieved":
-            print("new")
+            print("Retrieved something")
 
         elif cmd == "DataPackage":
             if not self.all_location_ids:
@@ -245,10 +245,8 @@ class TouhouUMContext(CommonContext):
 
     async def handle_received_items(self, network_index, network_items_list):
         # When network_index = 0, it contains all items given to the client.
-        print(network_items_list)
-        print(network_index)
         id_list = [network_item.item for network_item in network_items_list]
-        print(id_list)
+        
 
         local_list_length = len(self.all_received_items)
         new_items_list: list[NetworkItem] = []
@@ -261,7 +259,7 @@ class TouhouUMContext(CommonContext):
         if network_index <= 0:
 
             # Some desync has occurred between the server and client.
-            if len(network_index) < local_list_length:
+            if network_index < local_list_length:
                 logger.info("Error: Client has more items than the server's received item list")
                 self.all_received_items = []
                 for item in id_list:
@@ -286,7 +284,7 @@ class TouhouUMContext(CommonContext):
 
         self.all_received_items.append(id_list)
 
-        handle_items(new_items_list)
+        self.handle_items(new_items_list)
 
     async def update_locations_checked(self):
         new_locations = []
@@ -321,6 +319,7 @@ class TouhouUMContext(CommonContext):
     Handling Item List
     '''
     
+    # TODO make do something
     def handle_items(self, item_list):
         if len(item_list) <= 0: return
 
@@ -363,9 +362,13 @@ class TouhouUMContext(CommonContext):
             current_continue = 0
             current_stage = 0
             
+            temp_value: int = 0
 
             currently_in_stage = True
             currently_in_shop = False
+
+            time_in_stage = 0
+            checked_if_owns_stage = False
 
             game_state = -1
 
@@ -391,12 +394,15 @@ class TouhouUMContext(CommonContext):
                     # The games have begun.
                     # Started a new game or entered a new stage.
                     if not currently_in_stage:
+                        print("start")
                         currently_in_stage = True
                         boss_counter = -1
                         boss_present = False
                         current_score = self.handler.getScore()
                         current_continue = self.handler.getContinues()
                         current_stage = self.handler.getStage()
+
+                        checked_if_owns_stage = False
 
                         temp_value = 0
 
@@ -411,6 +417,18 @@ class TouhouUMContext(CommonContext):
                         self.handler.updateCardLockState()
                         given_resources = True
                         current_lives = self.handler.getLives()
+
+                    # Allow the game to fully load the stage first.
+                    # If the client attempts to force the player back while the stage is loading
+                    # the game will crash.
+                    if not checked_if_owns_stage:
+                        time_in_stage = self.handler.getTimeInStage()
+
+                        if time_in_stage >= 120:
+                            # If the current stage is not unlocked, send the player back.
+                            if not self.handler.isStageUnlocked(current_stage):
+                                self.handler.forceToMainMenu()
+                            checked_if_owns_stage = True
 
                     if current_score <= self.handler.getScore() or current_continue > self.handler.getContinues():
                         # Player's score could have lowered due to using a continue.
@@ -493,40 +511,44 @@ class TouhouUMContext(CommonContext):
                     # from the card if it has not been received as an item yet.
                     # Previous section is much less complex since you can easily view the cards the player is holding.
                     else:
-                        print("a")
+                        print("item card")
                         if (not self.handler.hasCardBeenPurchased(LIFE_CARD) 
                         and self.handler.getCardUnlockedState(LIFE_CARD)): 
                             print("a")
                             self.handler.purchaseCard(LIFE_CARD)
                             if not self.handler.hasCardBeenReceived(LIFE_CARD):
                                 temp_value = self.handler.getLives()
-                                self.handler.setLives(temp_value - 1)
+                                print(f"Lives, {temp_value}")
+                                temp_value -= 1
+                                self.handler.setLives(temp_value)
                         if (not self.handler.hasCardBeenPurchased(BOMB_CARD) 
                         and self.handler.getCardUnlockedState(BOMB_CARD)): 
-                            print("a")
+                            print("b")
                             self.handler.purchaseCard(BOMB_CARD)
                             if not self.handler.hasCardBeenReceived(BOMB_CARD):
                                 temp_value = self.handler.getBombs()
-                                self.handler.setBombs(temp_value - 1)
+                                temp_value -= 1
+                                self.handler.setBombs(temp_value)
                         if (not self.handler.hasCardBeenPurchased(NAZRIN_CARD) 
                         and self.handler.getCardUnlockedState(NAZRIN_CARD)): 
-                            print("a")
+                            print("c")
                             self.handler.purchaseCard(NAZRIN_CARD)
                             if not self.handler.hasCardBeenReceived(NAZRIN_CARD):
                                 self.handler.addFunds(-50)
                         if (not self.handler.hasCardBeenPurchased(RINGO_CARD) 
                         and self.handler.getCardUnlockedState(RINGO_CARD)):
-                            print("a")
+                            print("d")
                             self.handler.purchaseCard(RINGO_CARD)
                             if not self.handler.hasCardBeenReceived(RINGO_CARD):
-                                player.setPower(current_power)
+                                self.handler.setPower(current_power)
                         if (not self.handler.hasCardBeenPurchased(MOKOU_CARD) 
                         and self.handler.getCardUnlockedState(MOKOU_CARD)):
-                            print("a")
+                            print("e")
                             self.handler.purchaseCard(MOKOU_CARD)
                             if not self.handler.hasCardBeenReceived(MOKOU_CARD):
                                 temp_value = self.handler.getLives()
-                                self.handler.setLives(temp_value - 3)
+                                temp_value -= 3
+                                self.handler.setLives(temp_value)
                     
                     await self.update_locations_checked()
 
@@ -539,7 +561,7 @@ class TouhouUMContext(CommonContext):
         """
 		Loop for dealing with main menu stuff
 		"""
-        print("new")
+        print("Menu Loop Init")
 
         try:
             game_state = -1

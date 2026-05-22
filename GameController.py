@@ -27,6 +27,8 @@ class GameController:
         self.addrContinues = self.pm.base_address + ADDR_CONTINUES
         self.addrDifficulty = self.pm.base_address + ADDR_DIFFICULTY
         
+        self.addrTimeInStage = self.pm.base_address + ADDR_TIME_IN_STAGE
+
         # Large pointers which hold lots of data.
         self.shopPtr = self.pm.base_address + ADDR_SHOP_PTR
         self.cardManagerPtr = self.pm.base_address + ADDR_CARD_MANAGER_PTR
@@ -76,6 +78,9 @@ class GameController:
     def setPower(self, value) -> None:
         self.pm.write_int(self.addrPower, value)
 
+    def getTimeInStage(self) -> int:
+        return self.pm.read_int(self.addrTimeInStage)
+
 
     # Return values follow the character constants in stage_constants.py
     # 0 - Reimu
@@ -112,7 +117,8 @@ class GameController:
 
     # Will force the player back into the main menu when in-stage.
     def force_to_main_menu(self) -> None:
-        self.pm.write_bytes(self.menuStatePtr, bytes([4]),1)
+        print("Force B")
+        self.pm.write_int(self.menuStatePtr, 4)
 
     '''
     Stage and Card Info
@@ -244,7 +250,7 @@ class GameController:
     '''
     def getCardUnlockedState(self, id) -> bool:
         base_address = getPointerAddress(self.pm, self.scorefilePtr, ADDR_UNLOCKED_CARD_OFFSET)
-        print(self.pm.read_bytes(base_address + id, 1))
+        print(self.pm.read_bytes(base_address + id, 1) == bytes([1]))
         return self.pm.read_bytes(base_address + id, 1) == bytes([1])
 
     def setCardUnlockState(self, id, new_value) -> None:
