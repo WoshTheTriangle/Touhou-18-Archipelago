@@ -20,6 +20,8 @@ class GameController:
         self.addrStage = self.pm.base_address + ADDR_CURRENT_STAGE
         self.addrLives = self.pm.base_address + ADDR_LIVES
         self.addrBombs = self.pm.base_address + ADDR_BOMBS
+        self.addrLifeFrag = self.pm.base_address + ADDR_LIFE_FRAGS
+        self.addrBombFrag = self.pm.base_address + ADDR_BOMB_FRAGS
         self.addrFunds = self.pm.base_address + ADDR_FUNDS
         self.addrCharacter = self.pm.base_address + ADDR_CURRENT_CHARACTER
         self.addrPower = self.pm.base_address + ADDR_POWER
@@ -62,6 +64,18 @@ class GameController:
 
     def setBombs(self, value) -> None:
         self.pm.write_int(self.addrBombs, value)
+
+    def getLifeFrags(self) -> int:
+        return self.pm.read_int(self.addrLifeFrag)
+
+    def setLifeFrags(self, value) -> None:
+        self.pm.write_int(self.addrLifeFrag, value)
+
+    def getBombFrags(self) -> int:
+        return self.pm.read_int(self.addrBombFrag)
+
+    def setBombFrags(self, value) -> None:
+        self.pm.write_int(self.addrBombFrag, value)
 
     def getFunds(self) -> int:
         return self.pm.read_int(self.addrFunds)
@@ -135,22 +149,22 @@ class GameController:
         return self.pm.read_int(boss_address) != 0
 
     # New speed is in the form [unfocused_speed, focused_speed].
-    def setSpeed(self, new_speed) -> None:
+    def setSpeed(self, new_speeds: list[int]) -> None:
         address = self.pm.read_int(self.pm.base_address + ADDR_PLAYER_PTR)
         address += 0x477B4
-        speed = new_speed[0]
+        speed = new_speeds[0]
         self.pm.write_int(address + 0, speed)
-        diagonal_speed = int(new_speed[0]/math.sqrt(2))
+        diagonal_speed = int(new_speeds[0]/math.sqrt(2))
         self.pm.write_int(address + 4, diagonal_speed)
 
-        speed = new_speed[1]
+        speed = new_speeds[1]
         self.pm.write_int(address + 8, speed)
-        diagonal_speed = int(new_speed[1]/math.sqrt(2))
+        diagonal_speed = int(new_speeds[1]/math.sqrt(2))
         self.pm.write_int(address + 12, diagonal_speed)
 
     # Resets character to default speed.
     def resetSpeed(self) -> None:
-        speed_list = CHARACTER_SPEEDS[self.getCharacter()]
+        speed_list = CHARACTER_SPEEDS[self.getCurrentCharacter()]
 
         address = self.pm.read_int(self.pm.base_address + ADDR_PLAYER_PTR)
         address += 0x477B4

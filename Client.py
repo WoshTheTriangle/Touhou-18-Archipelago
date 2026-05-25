@@ -22,7 +22,7 @@ from .GameHandler import *
 from .Locations import *
 from .variables.meta_data import *
 from .Items import *
-from .variables import stage_constants
+from .variables import stage_constants, card_constants
 from .Tools import getStageLocationMapping, shop_card_id_to_card_id, getAPIDsForCards
 
 class TouhouUMClientProcessor(ClientCommandProcessor):
@@ -62,6 +62,8 @@ class TouhouUMContext(CommonContext):
 
         self.able_to_check = False
 
+        self.retrieved_last_item_id = False
+
         self.options = None
         self.in_error = None
         self.is_game_running: bool = False
@@ -75,6 +77,8 @@ class TouhouUMContext(CommonContext):
 
         # Gameplay-related variables
         # This is the type of data that should be saved when closing the game.
+        self.checked_if_owns_stage = False
+
         self.unlocked_characters: list = []
         self.unlocked_cards: list = []
         self.unlocked_stages: list = []
@@ -86,12 +90,16 @@ class TouhouUMContext(CommonContext):
         self.died_to_deathlink: bool = False
 
         self.received_item_queue: list[NetworkItem] = [] # All items from the server.
-        self.menu_item_queue: list = [] # Wait because player is in the menu.
-        self.game_item_queue: list = [] # Wait because player is in a stage.
+        self.card_item_queue: list = [] # Contains card-related items.
+        self.permanent_item_queue: list = [] # General permanent items such as continues and stages.
+        self.game_item_queue: list = [] # Can only be active while in-stage.
 
         self.all_received_items: list[int] = []
         self.loaded_past_received_items: bool = False
+
         self.last_received_item_index_server: int = -1
+
+        self.custom_data_keys_list: list = None
 
         self.reset()
 
@@ -102,12 +110,16 @@ class TouhouUMContext(CommonContext):
         self.is_connected = False
         self.is_game_running = False
 
+        self.retrieved_last_item_id = False
+
         self.all_location_ids = []
         self.previous_location_checked = []
         self.handler = None
 
         self.stage_location_mappings = []
         self.location_id_to_card_id = []
+
+        self.checked_if_owns_stage = False
 
         self.unlocked_characters = []
         self.unlocked_cards = []
@@ -119,11 +131,13 @@ class TouhouUMContext(CommonContext):
         self.died_to_deathlink = False
 
         self.received_item_queue = []
-        self.menu_item_queue = []
+        self.card_item_queue = []
+        self.permanent_item_queue = []
         self.game_item_queue = []
 
         self.all_received_items = []
         self.loaded_past_received_items = False
+
         self.last_received_item_index_server = -1
 
     def reset_game_data(self):
@@ -199,6 +213,7 @@ class TouhouUMContext(CommonContext):
         Manage packages received from the server
         This is the big method.
         """
+
         if cmd == "RoomInfo":
             self.seed_name = args["seed_name"]
 
@@ -207,6 +222,10 @@ class TouhouUMContext(CommonContext):
             self.all_location_ids = set(args["missing_locations"] + args["checked_locations"])
             self.options = args["slot_data"] #Yaml options
             self.is_connected = True
+
+            self.slot = args["slot"]
+            self.custom_data_keys_list = [f"{str(self.team)}_{str(self.slot)}_LastItemIndexTH18"] 
+
             #TODO: Custom stuff and location mapping
             self.stage_location_mappings = getStageLocationMapping(self.options["split_by_difficulty"])
             self.location_id_to_card_id = getAPIDsForCards()
@@ -219,8 +238,17 @@ class TouhouUMContext(CommonContext):
         if cmd == "ReceivedItems":
             # args["index"] is the next empty index of the list of items the player has.
             asyncio.create_task(self.handle_received_items(args["index"], args["items"]))
+
         elif cmd == "Retrieved":
-            print("Retrieved something")
+
+            # Last received item index from the server.
+            if self.custom_data_keys_list[0] in args["keys"]:
+                print(args["keys"][self.custom_data_keys_list[0]])
+                self.retrieved_last_item_id = True
+                if not args["keys"][self.custom_data_keys_list[0]] is None:
+                    self.last_received_item_index_server = args["keys"][self.custom_data_keys_list[0]]
+                else:
+                    self.last_received_item_index_server = -1
 
         elif cmd == "DataPackage":
             if not self.all_location_ids:
@@ -238,55 +266,33 @@ class TouhouUMContext(CommonContext):
             tags = args.get("tags", [])
         
         if cmd == "SetReply":
-            print("g")
+            print("To be added")
 
     def check_victory(self) -> bool:
         print("soon")
 
-    async def handle_received_items(self, network_index, network_items_list):
-        # When network_index = 0, it contains all items given to the client.
-        id_list = [network_item.item for network_item in network_items_list]
-        
+    async def get_custom_data_from_server(self):
+        """
+        Request custom data upon client initialization.
+        """
+        await self.send_msgs([{"cmd": "Get", "keys": [self.custom_data_keys_list[0]]}])
 
-        local_list_length = len(self.all_received_items)
-        new_items_list: list[NetworkItem] = []
-
-        # You'd want to be in the game if you are to receive stuff.
-        while self.handler is None or self.handler.gameController is None:
-            await asyncio.sleep(0.5)
-
-        # All items are here
-        if network_index <= 0:
-
-            # Some desync has occurred between the server and client.
-            if network_index < local_list_length:
-                logger.info("Error: Client has more items than the server's received item list")
-                self.all_received_items = []
-                for item in id_list:
-                    self.all_received_items.append(item)
-
-                #TODO th18.5 saved everything to a json. idk if I should do that as well.
-                # I'll find out if I do when I trap myself in a corner.
-                return
-
-            new_items_list = network_items_list[local_list_length:]
-
-        else:
-            if local_list_length == network_index:
-                new_items_list = network_items_list
-            # A desync has occurred
-            else:
-                sync_msg = [{"cmd": "Sync"}]
-                # TODO locations checked?
-                await self.send_msgs(sync_msg)
-
-        if len(new_items_list) <= 0: return
-
-        self.all_received_items.append(id_list)
-
-        self.handle_items(new_items_list)
+    async def update_last_item_id(self):
+        """
+        Send the new last received item ID to the server.
+        """
+        # Send new ending index to the sever
+        index_msg = [{"cmd": "Set",
+                      "key": self.custom_data_keys_list[0],
+                      "default": 0,
+                      "operations": [{"operation": "replace", "value": self.last_received_item_index_server}]
+                      }]
+        await self.send_msgs(index_msg)
 
     async def update_locations_checked(self):
+        """
+        All checking required to update locations the player has found.
+        """
         new_locations = []
 
         # Stage-related Locations
@@ -294,11 +300,11 @@ class TouhouUMContext(CommonContext):
             if self.handler.isBossBeaten(*map) and id not in self.previous_location_checked:
                 new_locations.append(id)
 
+        # New cards purchased
         for id, card_id in self.location_id_to_card_id.items():
             if id not in self.previous_location_checked and self.handler.hasCardBeenPurchased(card_id):
                 new_locations.append(id)
         
-
         # If there are any new locations, add them to the list and send them to the server.
         if new_locations:
             print("the new")
@@ -318,30 +324,191 @@ class TouhouUMContext(CommonContext):
     '''
     Handling Item List
     '''
-    
-    # TODO make do something
-    def handle_items(self, item_list):
+
+    async def handle_received_items(self, network_index, network_items_list):
+        """
+        Handles all received items.
+        Sends the latest item ID to the server and organizes the rest into queues to be used.
+        """
+        # When network_index = 0, it contains all items given to the client.
+        id_list = [network_item.item for network_item in network_items_list]
+        
+        local_list_length = len(self.all_received_items)
+        new_items_list: list[NetworkItem] = []
+
+        # You'd want to be in the game and know the previous last index if you are to receive stuff.
+        while (self.handler is None or self.handler.gameController is None) and not self.retrieved_last_item_id:
+            print("waiting for the game")
+            await asyncio.sleep(0.5)
+
+        logger.info(f"Index is {network_index}")
+
+        # TODO make some json stuff since this does nothing rn.
+        if (not self.all_received_items or self.all_received_items == []) and self.last_received_item_index_server > 0:
+            local_list_length = self.last_received_item_index_server
+
+        # All items are here
+        if network_index <= 0:
+            print("Network index is 0")
+            # Some desync has occurred between the server and client.
+            if len(network_items_list) < local_list_length:
+                logger.info("Error: Client has more items than the server's received item list")
+                self.all_received_items = []
+                
+                #await self.add_to_item_list(network_items_list)
+
+                #TODO th18.5 saved everything to a json. idk if I should do that as well.
+                # Normally theres a return here but idk
+
+            new_items_list = network_items_list
+
+        else:
+            print("Network index is not 0")
+            if local_list_length == network_index:
+                print("Network index is same as item list")
+                new_items_list = network_items_list
+            # A desync has occurred
+            else:
+                logger.info("Sync issue")
+                sync_msg = [{"cmd": "Sync"}]
+                # TODO locations checked?
+                await self.send_msgs(sync_msg)
+
+        if len(new_items_list) <= 0: return
+
+        self.handle_items(new_items_list, network_index)
+
+        # Update last used index.
+        await self.add_to_item_list(new_items_list)
+
+    def handle_items(self, item_list, network_index):
+        """
+        Organizes all received items properly into their queues.
+        """
         if len(item_list) <= 0: return
 
-        for ap_item in item_list:
-            item_id = ap_item.item
+        for i in range(len(item_list)):
+            item_id = item_list[i].item
+            if item_id in PERMANENT_ITEMS:
+                self.permanent_item_queue.append(item_id)
+            elif item_id in ITEM_ID_TO_CARD_ID:
+                self.card_item_queue.append(item_id)
+            # We do not want to repeat stage-only items each reset such as traps.
+            elif item_id in STAGE_ONLY_ITEMS and network_index + i >= self.last_received_item_index_server:
+                print("game queue append")
+                self.game_item_queue.append(item_id)
 
+        self.handle_card_items()
+        self.handle_permanent_items()
+
+    def handle_card_items(self):
+        """
+        Adds cards to the unlocked list. 
+        """
+        card_id = 0
+
+        for card_item in self.card_item_queue:
+            card_id = ITEM_ID_TO_CARD_ID.get(card_item, -1)
+            if card_id == -1:
+                logger.print("Error: Card ID does not exist")
+                self.card_item_queue.remove(card_item)
+                continue
+            
+            self.handler.receiveCard(card_id)
+            # Item Cards may be weird...
+            #TODO I may want to do some weird thing where I disable them when in-stage but 
+            # re-enable them out of stage to give the illusion of prettiness.
+            if not card_id in ITEM_CARDS:
+                self.handler.setCardUnlockState(card_id, True)
+            
+
+            self.card_item_queue.remove(card_item)
+        
     #TODO
-    # Items that can only be processed while the player is in-stage.        
-    async def handle_game_only_items(self):
-        for item_id in self.game_item_queue:
-            print("tba")
+    def handle_permanent_items(self):
+        """
+        These items can be processed anywhere at any time. The vast majority of them.
+        """
+        for item_id in self.permanent_item_queue:
+            match item_id:
+                case 1:
+                    self.handler.addMaxLives()
+                    print("+1 life")
+                case 2:
+                    self.handler.addMaxBombs()
+                    print("+1 bomb")
+                case 3:
+                    self.handler.addContinues()
+                    print("+1 continue")
+                case 4:
+                    self.handler.lowerDifficulty()
+                    print("lower difficulty")
+                case 5:
+                    self.handler.addCardSlots()
+                    print("card slot +1")
+                case 100:
+                    self.handler.unlock_character(CHARACTER_REIMU)
+                    print("reimu in")
+                case 101:
+                    self.handler.unlock_character(CHARACTER_MARISA)
+                    print("marisa in")
+                case 102:
+                    self.handler.unlock_character(CHARACTER_SAKUYA)
+                    print("sakuya in")
+                case 103:
+                    self.handler.unlock_character(CHARACTER_SANAE)
+                    print("sanae in")
+                case 200:
+                    self.handler.addStage()
+                    print("+1 stage")
+                case 201:
+                    self.handler.addStage(CHARACTER_REIMU)
+                    print("+1 reimu stage")
+                case 202:
+                    self.handler.addStage(CHARACTER_MARISA)
+                    print("+1 marisa stage")
+                case 203:
+                    self.handler.addStage(CHARACTER_SAKUYA)
+                    print("+1 sakuya stage")
+                case 204:
+                    self.handler.addStage(CHARACTER_SANAE)
+                    print("+1 sanae stage")
+                case 205:
+                    self.handler.unlock_extra()
+                    print("extra stage")
+                case 206:
+                    self.handler.unlock_extra(CHARACTER_REIMU)
+                    print("extra stage reimu")
+                case 207:
+                    self.handler.unlock_extra(CHARACTER_MARISA)
+                    print("extra stage marisa")
+                case 208:
+                    self.handler.unlock_extra(CHARACTER_SAKUYA)
+                    print("extra stage sakuya")
+                case 209:
+                    self.handler.unlock_extra(CHARACTER_SANAE)
+                    print("extra stage sanae")
 
-            self.menu_item_queue.remove(item_id)
+            self.permanent_item_queue.remove(item_id)
 
-    #TODO
-    # These items can be processed anywhere at any time.
-    def handle_menu_items(self):
-        for item_id in self.menu_item_queue:
-            print("tba")
+    async def add_to_item_list(self, item_list: list[NetworkItem]):
+        """
+        Add to the total list of items and send the new last index to the server.
+        """
+        item_id_list: list[int] = []
 
-            self.menu_item_queue.remove(item_id)
-    
+        for new_item in item_list:
+            item_id_list.append(new_item.item)
+
+        self.all_received_items += item_id_list
+
+        print(f"init - {self.last_received_item_index_server}")
+
+        self.last_received_item_index_server = len(self.all_received_items)
+
+        print(f"now - {self.last_received_item_index_server}")
+
+        asyncio.create_task(self.update_last_item_id())
 
     '''
     Async Loops
@@ -349,34 +516,29 @@ class TouhouUMContext(CommonContext):
 
     async def game_loop(self):
         """
-        The main loop that handles giving stage resources and updating boss-related locations.
-        Stuff that happens while in-stage
+        The main loop that handles giving stage resources and updating boss-related locations
+        along all details from the shop.
+        Stuff that happens while in-stage.
         """
         try:
+            
+            print("Game Loop Init")
+
             boss_present = False
-            current_lives = 0
+            
             boss_counter = -1
             given_resources = False
+
+            current_lives = 0
             current_score = 0
-            current_power = 0
             current_continue = 0
             current_stage = 0
             
-            temp_value: int = 0
-
             currently_in_stage = True
-            currently_in_shop = False
 
             time_in_stage = 0
-            checked_if_owns_stage = False
 
             game_state = -1
-
-            shop_card_list = []
-            shop_card_id_list = []
-            player_card_list = []
-            
-            new_card_list = []
 
             while not self.exit_event.is_set() and self.handler and not self.in_error:
                 await asyncio.sleep(0.5)
@@ -402,10 +564,6 @@ class TouhouUMContext(CommonContext):
                         current_continue = self.handler.getContinues()
                         current_stage = self.handler.getStage()
 
-                        checked_if_owns_stage = False
-
-                        temp_value = 0
-
                         if False: #TODO add state to see impossible stuff
                             self.able_to_check = False
 
@@ -421,14 +579,18 @@ class TouhouUMContext(CommonContext):
                     # Allow the game to fully load the stage first.
                     # If the client attempts to force the player back while the stage is loading
                     # the game will crash.
-                    if not checked_if_owns_stage:
+                    if not self.checked_if_owns_stage:
                         time_in_stage = self.handler.getTimeInStage()
 
                         if time_in_stage >= 120:
+                            self.checked_if_owns_stage = True
+
                             # If the current stage is not unlocked, send the player back.
                             if not self.handler.isStageUnlocked(current_stage):
                                 self.handler.forceToMainMenu()
-                            checked_if_owns_stage = True
+                                self.checked_if_owns_stage = False
+
+                                continue
 
                     if current_score <= self.handler.getScore() or current_continue > self.handler.getContinues():
                         # Player's score could have lowered due to using a continue.
@@ -467,8 +629,46 @@ class TouhouUMContext(CommonContext):
                 # Went to main menu or shop.
                 elif currently_in_stage:
                     currently_in_stage = False
+                    self.checked_if_owns_stage = False
                     given_resources = False
 
+        except Exception as e:
+            logger.error(f"Main ERROR: {e}")
+            logger.error(traceback.format_exc())
+            self.in_error = True
+
+    async def shop_loop(self):
+        """
+        The main loop for the shop.
+        Handles purchasing cards and disabling cards that have already
+        been purchased but not unlocked. 
+        """
+        try:
+
+            # A basic variable for editing gotten values before setting them back.
+            temp_value: int = 0
+            
+            currently_in_shop = False
+            current_power = 0
+
+            shop_card_list = []
+            shop_card_id_list = []
+            player_card_list = []
+            
+            new_card_list = []
+
+            game_state = -1
+
+            print("Shop Loop Init")
+
+            while not self.exit_event.is_set() and self.handler and not self.in_error:
+                await asyncio.sleep(0.5)
+
+                game_state = self.handler.get_game_state()
+
+                if game_state == -1:
+                    continue
+                
                 '''Shop Check'''
                 if game_state == IN_SHOP:
                     # Entering Shop
@@ -518,7 +718,6 @@ class TouhouUMContext(CommonContext):
                             self.handler.purchaseCard(LIFE_CARD)
                             if not self.handler.hasCardBeenReceived(LIFE_CARD):
                                 temp_value = self.handler.getLives()
-                                print(f"Lives, {temp_value}")
                                 temp_value -= 1
                                 self.handler.setLives(temp_value)
                         if (not self.handler.hasCardBeenPurchased(BOMB_CARD) 
@@ -551,7 +750,6 @@ class TouhouUMContext(CommonContext):
                                 self.handler.setLives(temp_value)
                     
                     await self.update_locations_checked()
-
         except Exception as e:
             logger.error(f"Main ERROR: {e}")
             logger.error(traceback.format_exc())
@@ -559,7 +757,8 @@ class TouhouUMContext(CommonContext):
 
     async def menu_loop(self):
         """
-		Loop for dealing with main menu stuff
+		Loop for dealing with main menu stuff.
+        Mostly preventing you from going to places you should not be.
 		"""
         print("Menu Loop Init")
 
@@ -587,43 +786,128 @@ class TouhouUMContext(CommonContext):
             logger.error(traceback.format_exc())
             self.in_error = True
 
-    '''
-    async def shop_loop(self):
+    async def stage_item_loop(self):
         """
-        Loop which handles shop stuff such as editing cards 
-        and checking whether a new card was purchased or not
+        Loop that handles items that can only be processed while in-stage.
         """
         try:
+            freeze_duration = 2
+            freeze_timer = 0
+
+            increased_speed_duration = 2
+            increased_speed_timer = 0
+
+            inverse_speed_duration = 2
+            inverse_speed_timer = 0
+
+            reduced_damage_duration = 3
+            reduced_damage_timer = 0
+
             game_state = -1
-            
+            currently_in_menu = False
 
             while not self.exit_event.is_set() and self.handler and not self.in_error:
-                await asyncio.sleep(0.5)
-                game_state = self.handler.get_game_state()
-                if game_state == IN_SHOP:
-                    if not currently_in_shop:
-                        currently_in_shop = True
-                        logger.info("Entered a shop")
+                await asyncio.sleep(1.0)
+
+                # Wait until the player is actively in a stage they can play fully.
+                if self.checked_if_owns_stage:
+                    for item_id in self.game_item_queue:
+                        match item_id:
+                            case 6:
+                                print("+50 funds")
+                                self.handler.addFunds(50)
+                            case 7:
+                                print("+75 funds")
+                                self.handler.addFunds(75)
+                            case 8:
+                                print("+100 funds")
+                                self.handler.addFunds(100)
+                            case 9:
+                                print("+50 power")
+                                self.handler.addPower(50)
+                            case 10:
+                                print("+75 power")
+                                self.handler.addPower(75)
+                            case 11:
+                                print("+100 power")
+                                self.handler.addPower(100)
+                            # Filler
+                            case 400:
+                                print("+10 funds")
+                                self.handler.addFunds(10)
+                            case 401:
+                                print("+25 funds")
+                                self.handler.addFunds(25)
+                            case 402:
+                                print("+1 power")
+                                self.handler.addPower(1)
+                            case 403:
+                                print("+10 power")
+                                self.handler.addPower(10)
+                            case 404:
+                                print("+1 Life Fragment")
+                                self.handler.addLifeFrags(1)
+                            case 405:
+                                print("+1 Bomb Fragment")
+                                self.handler.addBombFrags(1)
+                            # Traps
+                            case 500:
+                                print("Trap: Frozen")
+                                self.handler.setSpeed([0, 0])
+                                freeze_timer = freeze_duration
+                            case 501:
+                                print("Trap: FAST")
+                                self.handler.setSpeed([1000, 500])
+                                increased_speed_timer = increased_speed_duration
+                            case 502:
+                                print("Trap: Forced to fight Seija")
+                                self.handler.setSpeed([-CHARACTER_SPEEDS[self.handler.getCurrentCharacter()][0],
+                                                       -CHARACTER_SPEEDS[self.handler.getCurrentCharacter()][1]])
+                                inverse_speed_timer = inverse_speed_duration
+                            case 503:
+                                print("-10 funds")
+                                self.handler.addFunds(-10)
+                            case 504:
+                                print("-50 funds")
+                                self.handler.addFunds(-50)
+                            case 505:
+                                print("-100 funds")
+                                self.handler.addFunds(-100)
+                            case 506:
+                                print("-25 power")
+                                self.handler.addPower(-25)    
+                            case 507:
+                                print("-50 power")
+                                self.handler.addPower(-50)  
+                            case 508:
+                                print("Trap: Weakness.")
+                                # TODO
+                            case 509:
+                                print("Trap: You die")
+                                # TODO
+
+                        self.game_item_queue.remove(item_id)
                     
-                elif currently_in_shop:
-                    logger.info("Left a shop")
-                    currently_in_shop = False
+                    if freeze_timer == 0:
+                        self.handler.resetSpeed()
+                    elif increased_speed_timer == 0:
+                        self.handler.resetSpeed()
+                    elif inverse_speed_timer == 0:
+                        self.handler.resetSpeed()
+
+                    freeze_timer -= 1
+                    increased_speed_timer -= 1
+                    inverse_speed_timer -= 1
+                    reduced_damage_timer -= 1
 
         except Exception as e:
             logger.error(f"Main ERROR: {e}")
             logger.error(traceback.format_exc())
             self.in_error = True
-    '''
-
-    async def trap_loop(self):
-        """
-        Loop that handles traps.
-        """
-        print("soon")
 
     async def death_link_loop(self):
         """
-        Loop that hanldes death link.
+        Loop that handles death link.
         """
         print("soon")
 
@@ -650,12 +934,25 @@ async def game_watcher(ctx):
             ctx.reset()
             await ctx.wait_for_initial_connection_info()
 
+        else:
+            # Receive server data
+            if not ctx.retrieved_last_item_id:
+                try:
+                    print("Getting stuff from server.")
+                    await ctx.get_custom_data_from_server()
+                except:
+                    ctx.inError = True
+                    logger.error("Failed to retrieve save data.")
+                    logger.error(traceback.format_exc())
+
+        # Connecting to the game
         if ctx.handler == None and not ctx.in_error:
             logger.info(f"Connecting to {SHORT_NAME}...")
             asyncio.create_task(ctx.connect_to_game())
             while(ctx.handler == None and not ctx.exit_event.is_set()):
                 await asyncio.sleep(1)
 
+        # Error check, try to reconnect to the game.
         if ctx.in_error:
             logger.info(f"An error has broken connection. Waiting for connection to {SHORT_NAME}")
             ctx.handler.gameController = None
@@ -682,7 +979,8 @@ async def game_watcher(ctx):
         client_loops = []
         client_loops.append(asyncio.create_task(ctx.game_loop()))
         client_loops.append(asyncio.create_task(ctx.menu_loop()))
-        #client_loops.append(asyncio.create_task(ctx.shop_loop()))
+        client_loops.append(asyncio.create_task(ctx.shop_loop()))
+        client_loops.append(asyncio.create_task(ctx.stage_item_loop()))
         # Add more loops later
 
         await ctx.update_locations_checked()

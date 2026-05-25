@@ -6,6 +6,14 @@ from .Tools import clamp
 
 class GameHandler:
     gameController = None
+
+    lives = 0
+    bombs = 0
+    continues = 0
+    cardSlots = 0
+
+    latestStageIndex = 0
+
     bossesBeaten: dict = {}
     extraBeaten: dict = {}
     stagesUnlocked: dict = {}
@@ -39,6 +47,14 @@ class GameHandler:
         #TODO
 
     def reset(self) -> None:
+
+        # Default values
+        lives = 0
+        bombs = 0
+        continues = 0
+        cardSlots = 1
+        latestStageIndex = 1
+
         for character in CHARACTERS:
             self.bossesBeaten[character] = {}
             for difficulty in range(4):
@@ -50,6 +66,7 @@ class GameHandler:
 
             self.extraUnlocked[character] = False
 
+        self.charactersUnlocked[CHARACTER_REIMU] = False
         self.charactersUnlocked[CHARACTER_MARISA] = False
         self.charactersUnlocked[CHARACTER_SAKUYA] = False
         self.charactersUnlocked[CHARACTER_SANAE] = False
@@ -61,12 +78,31 @@ class GameHandler:
         self.cardsUnlocked = [False] * 56
 
         # Stage 1 is unlocked
-        self.stagesUnlocked[1] = True
+        for character in CHARACTERS:
+            self.stagesUnlocked[character] = {}
+            self.stagesUnlocked[character][1] = True
 
-        for i in range(2, 7):
-            self.stagesUnlocked[i] = False
+            for i in range(2, 7):
+                self.stagesUnlocked[character][i] = False
 
             
+    def unlock_character(self, character: int) -> None:
+        value = self.charactersUnlocked.get(character, -1)
+        
+        if value == -1:
+            print("Tried to unlock a character which does not exist")
+            return
+        
+        self.charactersUnlocked[character] = True
+
+    def unlock_extra(self, character: int = -1) -> None:
+        if character == -1:
+            for each_character in CHARACTERS:
+                self.extraUnlocked[each_character] = True
+            return
+            
+        self.extraUnlocked[character] = True
+
     def get_game_state(self) -> int:
         if self.gameController.isShopActive():
             return IN_SHOP
@@ -159,27 +195,35 @@ class GameHandler:
     def setFunds(self, value) -> None:
         self.gameController.setFunds(value)
 
-    def addFunds(self, value) -> None:
-        newFunds = clamp(0, 100000, self.gameController.getFunds() + value)
-        self.gameController.setFunds(newFunds)
-
     def getContinues(self) -> int:
         return self.gameController.getContinues()
 
     def setContinues(self, value) -> None:
-        self.gameController.setContinues(value)
+        self.gameController.setContinues(clamp(0, 5, value))
 
     def getLives(self) -> int:
         return self.gameController.getLives()
 
     def setLives(self, value) -> None:
-        self.gameController.setLives(value)
+        self.gameController.setLives(clamp(0, 8, value))
 
     def getBombs(self) -> int:
         return self.gameController.getBombs()
 
     def setBombs(self, value) -> None:
-        self.gameController.setBombs(value)
+        self.gameController.setBombs(clamp(0, 8, value))
+
+    def getLifeFrags(self) -> int:
+        return self.gameController.getLifeFrags()
+
+    def setLifeFrags(self, value) -> None:
+        self.gameController.setLifeFrags(value)
+
+    def getBombFrags(self) -> int:
+        return self.gameController.getBombFrags()
+
+    def setBombFrags(self, value) -> None:
+        self.gameController.setBombFrags(value)
 
     def getPower(self) -> int:
         return self.gameController.getPower()
@@ -190,11 +234,8 @@ class GameHandler:
     def getDifficulty(self) -> int:
         return self.gameController.getDifficulty()
 
-    def setSpeed(self, new_speed) -> None:
-        self.gameController.setSpeed(new_speed)
-
-    def resetSpeed(self) -> None:
-        self.gameController.resetSpeed()
+    def setSpeed(self, new_speeds: list[int]) -> None:
+        self.gameController.setSpeed(new_speeds)
 
     def isShopActive(self) -> bool:
         return self.gameController.isShopActive()
@@ -207,15 +248,6 @@ class GameHandler:
         cardCount = self.gameController.getCardCount()
         return self.gameController.getCardAddresses(cardCount)    
 
-    def hasCardBeenPurchased(self, id: int) -> bool:
-        # Account for null card
-        if id == 56: return True
-
-        return self.cardsPurchased[id]
-
-    def purchaseCard(self, id) -> None:
-        self.cardsPurchased[id] = True
-
     def getCardUnlockedState(self, id: int) -> bool:
         if id == 56: return True
         return self.gameController.getCardUnlockedState(id)
@@ -226,6 +258,89 @@ class GameHandler:
         new_val = 0
         if new_state: new_val = 1
         self.gameController.setCardUnlockState(id, new_val)
+
+    '''
+    Helper Functions
+    '''
+    
+    def addFunds(self, value) -> None:
+        newFunds = clamp(0, 100000, self.gameController.getFunds() + value)
+        self.gameController.setFunds(newFunds)
+
+    # The game does not automatically add lives and bombs when you set the amount of fragments
+    # to a number 3 or above so we need to do it manually.
+    def addLifeFrags(self, amount) -> None:
+        life_frags = self.getLifeFrags() + amount
+        extra_lives = int(life_frags/3)
+        
+        self.setLives(self.getLives() + extra_lives)
+        self.setLifeFrags(life_frags % 3)
+
+    def addBombFrags(self, amount) -> None:
+        bomb_frags = self.getBombFrags() + amount
+        extra_bombs = int(bomb_frags/3)
+        
+        self.setBombs(self.getBombs() + extra_bombs)
+        self.setBombFrags(bomb_frags % 3)
+
+    def addPower(self, value) -> None:
+        newPower = clamp(0, 400, self.gameController.getPower() + value)
+        self.gameController.setPower(newPower)
+    
+    def addMaxLives(self) -> None:
+        self.lives = clamp(0, 8, self.lives + 1)
+
+    def addMaxBombs(self) -> None:
+        self.bombs = clamp(0, 8, self.bombs + 1)
+
+    def addContinues(self) -> None:
+        self.continues = clamp(0, 5, self.continues + 1)
+
+    def addCardSlots(self) -> None:
+        self.cardSlots = clamp(0, 3, self.cardSlots + 1)
+
+    def addStage(self, character: int = -1) -> None:
+        index = 1
+
+        if character == -1:
+            while index < 7:
+                if not self.stagesUnlocked[CHARACTER_REIMU][index]:
+                    for each_character in CHARACTERS:
+                        self.stagesUnlocked[each_character][index] = True
+                    return
+            index += 1
+        
+        while index < 7:
+            if not self.stagesUnlocked[character][index]:
+                self.stagesUnlocked[character][index] = True
+                return
+            index += 1
+
+    def lowerDifficulty(self) -> None:
+
+        index = 3
+        while index >= 0:
+            if not self.difficultiesUnlocked[index]:
+                self.difficultiesUnlocked[index] = True
+                return
+            index -= 1
+
+
+    def resetSpeed(self) -> None:
+        self.gameController.resetSpeed()
+
+    '''
+    Managing GameHandler variables
+    '''
+
+    def hasCardBeenPurchased(self, id: int) -> bool:
+        # Account for null card
+        if id == 56: return True
+
+        return self.cardsPurchased[id]
+
+    def purchaseCard(self, id) -> None:
+        self.cardsPurchased[id] = True
 
     def hasCardBeenReceived(self, id: int) -> bool:
         if id == 56: return True
