@@ -7,6 +7,181 @@ class DifficultyChecks(Toggle):
     """
     display_name = "Difficulty Checks"
 
+'''
+class Mode(Choice):
+    """
+    The mode being played on.
+    Normal Mode: Regular Touhou 18 with unlocks for purchasing cards. 
+                 Each stage must be unlocked in order to progress.
+    Practice Mode: Unlock each stage in order to progress. 
+    """
+    display_name = "Game Mode"
+
+    option_normal = 0
+    option_practice = 2
+    default = 0
+'''
+
+class StageUnlock(Choice):
+    """
+    How stages are unlocked.
+    Global: No group.
+    Character: Stages are unlocked per character.
+    """
+    display_name = "Stage Unlocks"
+
+    option_global = 0
+    option_per_character = 2
+    default = 0
+
+class ExtraStage(Choice):
+    """
+    How Extra Stage should be included.
+    Linear: The Sky-Blue Magatama is acquired as the 7th progressive stage.
+    Apart: The Sky-Blue Magatama is a normal item to be unlocked.
+    Card Requirement: You unlock the Sky-Blue Magatama by owning a certain number of ability cards.
+    """
+    display_name = "Include Extra Stage"
+
+    option_linear = 0
+    option_apart = 1
+    option_card_count_requirement = 2
+
+    default = 0
+
+class MagatamaRequirement(Range):
+    """
+    If Card Count Requirement was chosen previously:
+    Amount of cards required to gain the Sky-Blue Magatama
+    """
+    display_name = "Number of Cards Needed to Unlock Sky-Blue Magatama"
+
+    range_start = 0
+    range_end = 55
+
+    default = 0
+
+class BlankCardRequirement(Range):
+    """
+    Amount of ability cards required to get the Blank Card
+    """
+    display_name = "Number of Cards Needed to Unlock Blank Card"
+
+    range_start = 0
+    range_end = 55
+    default = 20
+
+class Goal(Choice):
+    """
+    Determine the condition as the goal.
+    Defeat Chimata: Defeating Chimata Tenkyuu.
+    Defeat Momoyo: Defeating Momoyo Himemushi.
+    Chimata Blank Card Ending: Defeating Chimata Tenkyuu with the Blank Card.
+    Cards Acquired: Acquire a certain number of ability cards.
+    """
+    display_name = "Goal"
+
+    option_chimata = 0
+    option_momoyo = 1
+    option_chimata_with_blank_card = 2
+    option_ability_cards = 3
+    option_all = 4
+    default = 0
+
+class EndingsRequired(Toggle):
+    """
+    If Ability Cards was not chosen:
+    Determine whether the ending condition needs to be done with all characters.
+    """
+    display_name = "Require all characters to beat goal bosses"
+
+class CardsRequired(Range):
+    """
+    If Ability Cards was chosen:
+    The amount of ability cards required to achieve the goal.
+    """
+    display_name = "Amount of ability cards required to complete the goal"
+    range_start = 1
+    range_end = 56
+    default = 30
+
+class DifficultyCheck(Toggle):
+    """
+    Toggle whether checks are separated by difficulty.
+    """
+    display_name = "Difficulty Check"
+
+class CheckMultipleDifficulty(Toggle):
+    """
+    If Difficulty Check was enabled:
+    Toggle for all difficulty checks to include the checks of lower difficulties.
+    """
+    display_name = "Multiple Difficulty Check"
+
+class InitLivesLimit(Range):
+    """
+    Limit on the maximum amount of lives that the player can have.
+    """
+    display_name = "Lives Limit"
+
+    range_start = 0
+    range_end = 8
+    default = 8
+
+class MaxLifeItem(Toggle):
+    """
+    Allow the previous maximum limit on lives to be able to be increased via items.
+    Adds new items to the item pool.
+    """
+    display_name = "Toggle Max Life Increase Items"
+
+class InitBombsLimit(Range):
+    """
+    Limit on the maximum amount of bombs that the player can have.
+    """
+    display_name = "Bomb Limit"
+
+    range_start = 0
+    range_end = 8
+    default = 8
+
+class MaxBombItem(Toggle):
+    """
+    Allow the previous maximum limit on bombs to be able to be increased via items.
+    Adds new items to the item pool.
+    """
+    display_name = "Toggle Max Bomb Increase Items"
+
+class DeathLink(Toggle):
+    """
+    When you die, everyone else with death link enabled also dies. Same goes the other way. 
+    Can be changed later.
+    """
+    display_name = "Toggle Death Link"
+
+class DeathLinkTrigger(Choice):
+    """
+    When a DeathLink is triggered. 
+    Life: Activate death link upon losing a life.
+    Game Over: Activate death link upon getting a game over.
+    Can be changed later.
+    """
+    display_name = "Death Link Trigger"
+    option_life = 0
+    option_game_over = 1
+    default = 0
+
+class DeathLinkAmnesty(Range):
+    """
+    Number of DeathLink triggers needed before sending a DeathLink. 
+    Can be changed later.
+    """
+    display_name = "DeathLink Amnesty"
+    range_start = 1
+    range_end = 10
+    default = 1
+
+
 class TrapChance(Range):
     """
     Percent chance that any filler item gets replaced by a trap item.
@@ -22,4 +197,21 @@ class Th18Options(PerGameCommonOptions):
     trap_chance: TrapChance
     start_inventory_from_pool: StartInventoryPool
     split_by_difficulty: DifficultyChecks
+    #game_mode: Mode
+    stage_unlock: StageUnlock
+    extra_stage: ExtraStage
+    magatama_req: MagatamaRequirement
+    blank_card_req: BlankCardRequirement
+    goal: Goal
+    ending_req: EndingsRequired
+    card_req: CardsRequired
+    difficulty_check: DifficultyCheck
+    check_mult_difficulties: CheckMultipleDifficulty
+    init_max_lives: InitLivesLimit
+    max_life_item: MaxLifeItem
+    init_max_bombs: InitBombsLimit
+    max_bomb_item: MaxBombItem
+    deathlink: DeathLink
+    deathlink_trigger: DeathLinkTrigger
+    deathlink_amnesty: DeathLinkAmnesty
 

@@ -325,9 +325,11 @@ class GameHandler:
                 return
             index -= 1
 
-
     def resetSpeed(self) -> None:
         self.gameController.resetSpeed()
+
+    def killPlayer(self) -> None:
+        self.gameController.setPlayerState(4)
 
     '''
     Managing GameHandler variables

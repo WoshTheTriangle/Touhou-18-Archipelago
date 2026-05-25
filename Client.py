@@ -884,7 +884,7 @@ class TouhouUMContext(CommonContext):
                                 # TODO
                             case 509:
                                 print("Trap: You die")
-                                # TODO
+                                self.handler.killPlayer()
 
                         self.game_item_queue.remove(item_id)
                     

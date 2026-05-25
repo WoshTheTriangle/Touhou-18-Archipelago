@@ -36,6 +36,8 @@ class GameController:
         self.cardManagerPtr = self.pm.base_address + ADDR_CARD_MANAGER_PTR
         self.enemyManagerPtr = self.pm.base_address + ADDR_ENEMY_MANAGER_PTR
         
+        self.playerPtr = self.pm.base_address + ADDR_PLAYER_PTR
+
         self.mainMenuPtr = self.pm.base_address + ADDR_MAIN_MENU_PTR
         
         self.scorefilePtr = self.pm.base_address + ADDR_SCOREFILE_PTR
@@ -95,6 +97,10 @@ class GameController:
     def getTimeInStage(self) -> int:
         return self.pm.read_int(self.addrTimeInStage)
 
+    # The only real state of importance is 4 since that kills the player.
+    def setPlayerState(self, value) -> None:
+        address = getPointerAddress(self.pm, self.ADDR_PLAYER_PTR, ADDR_PLAYER_STATE_OFFSET)
+        self.pm.write_int(address, value)
 
     # Return values follow the character constants in stage_constants.py
     # 0 - Reimu
