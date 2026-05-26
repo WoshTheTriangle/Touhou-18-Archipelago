@@ -18,6 +18,10 @@ DIFFICULTY_HARD = 2
 DIFFICULTY_LUNATIC = 3
 DIFFICULTY_EXTRA = 4
 
+IN_STAGE = 0
+IN_MENU = 1
+IN_SHOP = 2
+
 DIFFICULTIES = [DIFFICULTY_EASY, DIFFICULTY_NORMAL, DIFFICULTY_HARD, DIFFICULTY_LUNATIC, DIFFICULTY_EXTRA]
 
 REIMU_SPEED = [576, 256, 407, 181]
@@ -31,7 +35,8 @@ CHARACTER_SPEEDS = [REIMU_SPEED, MARISA_SPEED, SAKUYA_SPEED, SANAE_SPEED]
 # String constants for location names
 
 DIFFICULTY_NAMES = ["Easy", "Normal", "Hard", "Lunatic"]
-CHARCTER_NAMES = ["Reimu", "Marisa", "Sakuya", "Sanae"]
+CHARACTER_NAMES = ["Reimu", "Marisa", "Sakuya", "Sanae"]
+CHARACTER_NAMES_TO_ID = {"Reimu": 0, "Marisa": 1, "Sakuya": 2, "Sanae": 3}
 
 STAGE_CHECKS = [
     ["Mike - MidBoss", "Mike Defeated"],
@@ -42,3 +47,10 @@ STAGE_CHECKS = [
     ["Tsukasa - MidBoss 2", "Chimata Defeated"],
     ["Tsukasa - MidBoss 3", "Momoyo Defeated"]
 ]
+
+EXTRA_CHECKS = ["Tsukasa - MidBoss 3", "Momoyo Defeated"]
+
+EXTRA_LINEAR = 0
+EXTRA_APART = 1
+EXTRA_CARD_REQ = 2
+EXTRA_NOT_INCLUDED = 3

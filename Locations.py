@@ -48,6 +48,7 @@ for character in CHARACTER_NAMES:
             location_offset += 1
         
         # Stage Clear Locations
+        
         stage_num = "Extra" if stage_num == 7 else stage_num
         location = f"[{character}] Stage {stage_num} Clear"
         location_table[location] = location_offset
@@ -75,6 +76,12 @@ for card in ABILITY_CARD_LIST:
     location_table[location] = location_offset
     location_id_to_name[location_offset] = location
     location_offset += 1
+
+# Sky-Blue Magatama
+location = f"Unlocked {MAGATAMA_CARD_NAME}"
+location_table[location] = location_offset
+location_id_to_name[location_offset] = location
+location_offset += 1
 
 # Endings Locations
 for character in CHARACTER_NAMES:

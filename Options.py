@@ -1,12 +1,5 @@
 from dataclasses import dataclass
 from Options import *
-
-class DifficultyChecks(Toggle):
-    """
-    Separate checks by difficulty
-    """
-    display_name = "Difficulty Checks"
-
 '''
 class Mode(Choice):
     """
@@ -39,13 +32,15 @@ class ExtraStage(Choice):
     How Extra Stage should be included.
     Linear: The Sky-Blue Magatama is acquired as the 7th progressive stage.
     Apart: The Sky-Blue Magatama is a normal item to be unlocked.
-    Card Requirement: You unlock the Sky-Blue Magatama by owning a certain number of ability cards.
+    Card Count Requirement: You unlock the Sky-Blue Magatama by owning a certain number of ability cards.
+    Not Included: The Sky-Blue Magatama is unobtainable and no locations are locked behind Extra Stage.
     """
     display_name = "Include Extra Stage"
 
     option_linear = 0
     option_apart = 1
     option_card_count_requirement = 2
+    option_not_included = 3
 
     default = 0
 
@@ -74,10 +69,11 @@ class BlankCardRequirement(Range):
 class Goal(Choice):
     """
     Determine the condition as the goal.
-    Defeat Chimata: Defeating Chimata Tenkyuu.
-    Defeat Momoyo: Defeating Momoyo Himemushi.
-    Chimata Blank Card Ending: Defeating Chimata Tenkyuu with the Blank Card.
-    Cards Acquired: Acquire a certain number of ability cards.
+    Defeat Chimata: Defeating Chimata Tenkyuu (Complete Stage 6).
+    Defeat Momoyo: Defeating Momoyo Himemushi (Complete Extra Stage).
+                   If Extra Stage is not included,  it will default to defeating Chimata.
+    Chimata Blank Card Ending: Defeating Chimata Tenkyuu with the Blank Card (Complete Stage 6 with Blank Card).
+    Ability Cards: Acquire a certain number of ability cards.
     """
     display_name = "Goal"
 
@@ -88,12 +84,15 @@ class Goal(Choice):
     option_all = 4
     default = 0
 
-class EndingsRequired(Toggle):
+class EndingsRequired(Range):
     """
     If Ability Cards was not chosen:
-    Determine whether the ending condition needs to be done with all characters.
+    Amount of characters required to complete the ending conditions to achieve the goal.
     """
-    display_name = "Require all characters to beat goal bosses"
+    display_name = "Amount of characters needed to beat goal bosses"
+    range_start = 1
+    range_end = 3
+    default = 1
 
 class CardsRequired(Range):
     """
@@ -117,6 +116,12 @@ class CheckMultipleDifficulty(Toggle):
     Toggle for all difficulty checks to include the checks of lower difficulties.
     """
     display_name = "Multiple Difficulty Check"
+
+class ExcludeLunatic(Toggle):
+    """
+    Exclude the Lunatic Difficulty, starting off at Hard instead.
+    """
+    display_name = "Exclude Lunatic"
 
 class InitLivesLimit(Range):
     """
@@ -195,9 +200,6 @@ class TrapChance(Range):
 @dataclass
 class Th18Options(PerGameCommonOptions):
     trap_chance: TrapChance
-    start_inventory_from_pool: StartInventoryPool
-    split_by_difficulty: DifficultyChecks
-    #game_mode: Mode
     stage_unlock: StageUnlock
     extra_stage: ExtraStage
     magatama_req: MagatamaRequirement
@@ -207,6 +209,7 @@ class Th18Options(PerGameCommonOptions):
     card_req: CardsRequired
     difficulty_check: DifficultyCheck
     check_mult_difficulties: CheckMultipleDifficulty
+    exclude_lunatic: ExcludeLunatic
     init_max_lives: InitLivesLimit
     max_life_item: MaxLifeItem
     init_max_bombs: InitBombsLimit

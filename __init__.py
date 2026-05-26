@@ -46,7 +46,7 @@ class TouhouUMWorld(World):
 
     def create_regions(self) -> None:
         Regions.create_and_connect_regions(self)
-        Locations.create_all_locations(self)
+        #Locations.create_all_locations(self)
 
     def create_items(self) -> None:
         Items.create_all_items(self)
@@ -59,6 +59,14 @@ class TouhouUMWorld(World):
 
     def fill_slot_data(self) -> Mapping[str, Any]:
         data = self.options.as_dict(
-            "trap_chance", "split_by_difficulty"
+            "trap_chance", "stage_unlock", 
+            "extra_stage", "magatama_req", 
+            "blank_card_req", "goal", 
+            "ending_req", "card_req", 
+            "difficulty_check", "check_mult_difficulties", 
+            "exclude_lunatic", "init_max_lives", 
+            "max_life_item", "init_max_bombs", 
+            "max_bomb_item", "deathlink", 
+            "deathlink_trigger", "deathlink_amnesty"
         )
         return data
