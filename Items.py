@@ -1,9 +1,12 @@
 from typing import Dict, NamedTuple, Optional
 
+import time
+
 from BaseClasses import Item, ItemClassification
 
 from .variables.meta_data import DISPLAY_NAME
 from .variables.card_constants import *
+from .variables.stage_constants import *
 
 CATEGORY_ITEM = "Useful Items"
 CATEGORY_FILLER = "Filler"
@@ -50,34 +53,101 @@ def create_item_with_correct_classification(world, name: str) -> TouhouUMItem:
 def create_all_items(world) -> None:
     item_pool: List[Item] = []
     for item, data in item_table.items():
+
+        # Less Difficulty Options
+        if data.code == 4 and world.options.exclude_lunatic:
+            #print("EXCLUDE LUNATIC")
+            for i in range(3):
+                item_pool.append(world.create_item(item))
+            continue
+
+        # Amount of progressive lives if there is a max limit without items increasing the cap.
+        if data.code == 1 and not world.options.max_life_item:
+            #print("PROGRESSIVE LIVES")
+            for i in range(world.options.init_max_lives):
+                item_pool.append(world.create_item(item))
+            continue
+        
+        # Amount of progressive bombs if there is a max limit without items increasing the cap.
+        if data.code == 2 and not world.options.max_bomb_item:
+            #print("PROGRESSIVE BOMBS")
+            for i in range(world.options.init_max_bombs):
+                item_pool.append(world.create_item(item))
+            continue
+
+        # Adding max lives
+        if data.code == 12 and world.options.max_life_item:
+            #print("MAX LIVES")
+            for i in range(8 - world.options.init_max_lives):
+                item_pool.append(world.create_item(item))
+            continue
+            
+        # Adding max bombs.
+        if data.code == 13 and world.options.max_bomb_item:
+            #print("MAX BOMBS")
+            for i in range(8 - world.options.init_max_bombs):
+                item_pool.append(world.create_item(item))
+            continue
+
+        # Global Character Stage Unlocks.
+        if data.code == 200 and world.options.stage_unlock == STAGE_GLOBAL:
+            # Extra stage is an additional linear next stage.
+            if world.options.extra_stage == EXTRA_LINEAR:
+                #print("EXTRA IS LINEAR")
+                for i in range(data.max_quantity + 1):
+                    item_pool.append(world.create_item(item))
+                continue
+        elif data.code == 200 and world.options.stage_unlock != STAGE_GLOBAL:
+            #print("NOT GLOBAL")
+            continue
+
+        # Global Character Extra Unlock
+        if data.code == 205 and (world.options.stage_unlock != STAGE_GLOBAL or world.options.extra_stage != EXTRA_APART):
+            #print("EXTRA IS NOT GLOBAL AND IS LINEAR")
+            continue
+
+        # Per Character Stage Unlocks.
+        if (data.code >= 201 and data.code <= 204) and world.options.stage_unlock == STAGE_PER_CHARACTER:
+            # Extra stage is an additional linear next stage.
+            if world.options.extra_stage == EXTRA_LINEAR:
+                #print("EXTRA IS PER CHARACTER LINEAR")
+                for i in range(data.max_quantity + 1):
+                    item_pool.append(world.create_item(item))
+                continue
+        elif (data.code >= 201 and data.code <= 204) and world.options.stage_unlock != STAGE_PER_CHARACTER:
+            #print("EXTRA IS GLOBAL AND ")
+            continue
+
+        # Per Character Extra Unlock
+        if (data.code >= 206 and data.code <= 209) and (world.options.stage_unlock != STAGE_PER_CHARACTER or world.options.extra_stage != EXTRA_APART):
+            #print("EXTRA IS GLOBAL AND LINEAR")
+            continue
+            
+        # Magatama (and Blank Card) is not automatically in the item pool.
+        if data.code == 353:
+            continue
+
+        if data.category == CATEGORY_FILLER or data.category == CATEGORY_TRAP:
+            #print("FILLER")
+            continue
+
+        # Normal item which can be treated normally.
         for i in range(data.max_quantity):
             item_pool.append(world.create_item(item))
+
     
+
+    # Filling up remaining required item slots.
     item_length = len(item_pool)
-
     num_locations = len(world.multiworld.get_unfilled_locations(world.player))
-
     num_filler_needed = num_locations - item_length
 
     for i in range(num_filler_needed):
         filler_name = world.get_filler_item_name()
         item_pool.append(world.create_item(filler_name))
 
-
     world.multiworld.itempool += item_pool
 
-    # Giving the player precollected items (player character and maybe some other stuff)
-    reimu = None
-    for item in item_pool:
-        if item.name == "Reimu":
-            reimu = item
-            break
-    world.push_precollected(reimu)
-
-    # world.create_item()
-    #TODO world.push_precollected()
-    # world.start_inventory_from_pool will take an initial item from the pool
-    # also need to use push_precollected
 
 def get_item_to_id_dict() -> Dict[str, int]:
     item_dict: Dict[str, int] = {}
@@ -88,17 +158,17 @@ def get_item_to_id_dict() -> Dict[str, int]:
 
 item_table: Dict[str, TouhouUMItemData] = {
     # Useful for Stage Completion
-    "+1 Max Life" : TouhouUMItemData(CATEGORY_STAGE, 1, ItemClassification.progression, 8),
-    "+1 Max Bomb" : TouhouUMItemData(CATEGORY_STAGE, 2, ItemClassification.progression, 8),
+    "+1 Starting Life" : TouhouUMItemData(CATEGORY_STAGE, 1, ItemClassification.progression, 8),
+    "+1 Starting Bomb" : TouhouUMItemData(CATEGORY_STAGE, 2, ItemClassification.progression, 8),
     "+1 Continue" : TouhouUMItemData(CATEGORY_ITEM, 3, ItemClassification.useful, 5),
     "Lower Difficulty" : TouhouUMItemData(CATEGORY_ITEM, 4, ItemClassification.progression, 3), #maybe useful later idk
     "Extra Starting Card Slot" : TouhouUMItemData(CATEGORY_ITEM, 5, ItemClassification.useful, 2),
     "+50 Funds" : TouhouUMItemData(CATEGORY_ITEM, 6, ItemClassification.useful, 3),
-    "+75 Funds" : TouhouUMItemData(CATEGORY_ITEM, 7, ItemClassification.useful, 3),
     "+100 Funds" : TouhouUMItemData(CATEGORY_ITEM, 8, ItemClassification.useful, 3),
     "+50 Power" : TouhouUMItemData(CATEGORY_ITEM, 9, ItemClassification.useful, 3),
     "+75 Power" : TouhouUMItemData(CATEGORY_ITEM, 10, ItemClassification.useful, 3),
-    "+100 Power" : TouhouUMItemData(CATEGORY_ITEM, 11, ItemClassification.useful, 3),
+    "+1 Max Life" : TouhouUMItemData(CATEGORY_ITEM, 12, ItemClassification.progression, 0),
+    "+1 Max Bomb" : TouhouUMItemData(CATEGORY_ITEM, 13, ItemClassification.progression, 0),
 
     # Characters
     "Reimu" : TouhouUMItemData(CATEGORY_CHARACTER, 100, ItemClassification.progression),
@@ -107,11 +177,11 @@ item_table: Dict[str, TouhouUMItemData] = {
     "Sanae" : TouhouUMItemData(CATEGORY_CHARACTER, 103, ItemClassification.progression),
     
     #Stages
-    "Next Stage" : TouhouUMItemData(CATEGORY_STAGE, 200, ItemClassification.progression, 7),
-    "[Reimu] Next Stage" : TouhouUMItemData(CATEGORY_STAGE, 201, ItemClassification.progression, 7),
-    "[Marisa] Next Stage" : TouhouUMItemData(CATEGORY_STAGE, 202, ItemClassification.progression, 7),
-    "[Sakuya] Next Stage" : TouhouUMItemData(CATEGORY_STAGE, 203, ItemClassification.progression, 7),
-    "[Sanae] Next Stage" : TouhouUMItemData(CATEGORY_STAGE, 204, ItemClassification.progression, 7),
+    "Next Stage" : TouhouUMItemData(CATEGORY_STAGE, 200, ItemClassification.progression, 6),
+    "[Reimu] Next Stage" : TouhouUMItemData(CATEGORY_STAGE, 201, ItemClassification.progression, 6),
+    "[Marisa] Next Stage" : TouhouUMItemData(CATEGORY_STAGE, 202, ItemClassification.progression, 6),
+    "[Sakuya] Next Stage" : TouhouUMItemData(CATEGORY_STAGE, 203, ItemClassification.progression, 6),
+    "[Sanae] Next Stage" : TouhouUMItemData(CATEGORY_STAGE, 204, ItemClassification.progression, 6),
     "Extra Stage" : TouhouUMItemData(CATEGORY_STAGE, 205, ItemClassification.progression),
     "[Reimu] Extra Stage" : TouhouUMItemData(CATEGORY_STAGE, 206, ItemClassification.progression),
     "[Marisa] Extra Stage" : TouhouUMItemData(CATEGORY_STAGE, 207, ItemClassification.progression),

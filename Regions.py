@@ -38,7 +38,6 @@ def generate_regions(world, exclude_lunatic, extra_stage_acquire, split_by_diffi
             region_shop.add_locations(get_location_names_with_ids([f"Purchased {STAGE_EXCLUSIVE_SHOP_CARDS[4]}"])
                                      | get_location_names_with_ids([f"Purchased {STAGE_EXCLUSIVE_SHOP_CARDS[5]}"]), TouhouUMLocation)
         else:
-            print(f"Purchased {STAGE_EXCLUSIVE_SHOP_CARDS[stage - 1]}")
             region_shop.add_locations(get_location_names_with_ids([f"Purchased {STAGE_EXCLUSIVE_SHOP_CARDS[stage - 1]}"]), TouhouUMLocation)
 
         region_list.append(region_shop)
@@ -162,10 +161,10 @@ def connect_regions(world) -> None:
     for character in CHARACTER_NAMES:
         starting_region = menu_region
         if extra_stage_acquire != EXTRA_NOT_INCLUDED:
-            if extra_stage_acquire != EXTRA_LINEAR or extra_stage_acquire == EXTRA_CARD_REQ: # Extra
+            if extra_stage_acquire == EXTRA_APART: # Extra connected to main menu
                 connecting_region = world.get_region(f"[{character}] Stage Extra")
                 starting_region.connect(connecting_region, f"[{character}] Enter Stage Extra")
-            elif extra_stage_acquire == EXTRA_LINEAR:
+            elif extra_stage_acquire == EXTRA_LINEAR: # Extra connected to beating stage 6
                 starting_region = world.get_region(f"Beat The Game")
                 connecting_region = world.get_region(f"[{character}] Stage Extra")
                 starting_region.connect(connecting_region, f"[{character}] Enter Stage Extra")

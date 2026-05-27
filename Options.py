@@ -30,24 +30,22 @@ class StageUnlock(Choice):
 class ExtraStage(Choice):
     """
     How Extra Stage should be included.
-    Linear: The Sky-Blue Magatama is acquired as the 7th progressive stage.
-    Apart: The Sky-Blue Magatama is a normal item to be unlocked.
-    Card Count Requirement: You unlock the Sky-Blue Magatama by owning a certain number of ability cards.
-    Not Included: The Sky-Blue Magatama is unobtainable and no locations are locked behind Extra Stage.
+    Linear: Extra Stage is acquired as the 7th progressive stage.
+    Apart: Extra Stage progressions are normal items to be unlocked.
+    Not Included: Extra Stage progressions and Sky-Blue Magatama are unobtainable and no locations are locked behind Extra Stage.
     """
     display_name = "Include Extra Stage"
 
     option_linear = 0
     option_apart = 1
-    option_card_count_requirement = 2
     option_not_included = 3
 
     default = 0
 
 class MagatamaRequirement(Range):
     """
-    If Card Count Requirement was chosen previously:
-    Amount of cards required to gain the Sky-Blue Magatama
+    Amount of cards required to gain the Sky-Blue Magatama:
+    (If set to 0, it is automatically obtained and you just need Extra Stage progressions to access the Extra Stage.)
     """
     display_name = "Number of Cards Needed to Unlock Sky-Blue Magatama"
 

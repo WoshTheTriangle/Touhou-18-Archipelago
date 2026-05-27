@@ -432,10 +432,10 @@ class TouhouUMContext(CommonContext):
         for item_id in self.permanent_item_queue:
             match item_id:
                 case 1:
-                    self.handler.addMaxLives()
+                    self.handler.addInitialLives()
                     print("+1 life")
                 case 2:
-                    self.handler.addMaxBombs()
+                    self.handler.addInitialBombs()
                     print("+1 bomb")
                 case 3:
                     self.handler.addContinues()
@@ -446,6 +446,12 @@ class TouhouUMContext(CommonContext):
                 case 5:
                     self.handler.addCardSlots()
                     print("card slot +1")
+                case 12:
+                    self.handler.addMaxLives()
+                    print("+1 max life")
+                case 13:
+                    self.handler.addMaxBombs()
+                    print("+1 max bomb")
                 case 100:
                     self.handler.unlock_character(CHARACTER_REIMU)
                     print("reimu in")

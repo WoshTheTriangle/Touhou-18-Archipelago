@@ -39,7 +39,8 @@ class TouhouUMWorld(World):
     # Manditory Arcipelago World methods    
 
     def generate_early(self) -> None:
-        print("soon tm")
+        # Giving the player precollected items (player character and maybe some other stuff)
+        self.push_precollected(self.create_item("Reimu"))
 
     def set_rules(self) -> None:
         Rules.set_all_rules(self)

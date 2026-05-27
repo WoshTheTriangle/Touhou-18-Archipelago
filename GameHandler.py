@@ -7,8 +7,12 @@ from .Tools import clamp
 class GameHandler:
     gameController = None
 
-    lives = 0
-    bombs = 0
+    initial_lives = 0
+    initial_bombs = 0
+
+    max_lives = 0
+    max_bombs = 0
+
     continues = 0
     cardSlots = 0
 
@@ -49,8 +53,12 @@ class GameHandler:
     def reset(self) -> None:
 
         # Default values
-        lives = 0
-        bombs = 0
+        initial_lives = 0
+        initial_bombs = 0
+
+        max_lives = 0
+        max_bombs = 0
+
         continues = 0
         cardSlots = 1
         latestStageIndex = 1
@@ -287,11 +295,17 @@ class GameHandler:
         newPower = clamp(0, 400, self.gameController.getPower() + value)
         self.gameController.setPower(newPower)
     
+    def addInitialLives(self) -> None:
+        self.initial_lives = clamp(0, 8, self.initial_lives + 1)
+
+    def addInitialBombs(self) -> None:
+        self.initial_bombs = clamp(0, 8, self.initial_bombs + 1)
+
     def addMaxLives(self) -> None:
-        self.lives = clamp(0, 8, self.lives + 1)
+        self.max_lives = clamp(0, 8, self.max_lives + 1)
 
     def addMaxBombs(self) -> None:
-        self.bombs = clamp(0, 8, self.bombs + 1)
+        self.max_bombs = clamp(0, 8, self.max_bombs + 1)
 
     def addContinues(self) -> None:
         self.continues = clamp(0, 5, self.continues + 1)
