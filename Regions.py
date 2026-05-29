@@ -6,6 +6,10 @@ from .variables.card_constants import *
 def create_and_connect_regions(world) -> None:
     create_regions(world)
     connect_regions(world)
+    create_events(world)
+
+def create_events(world) -> None:
+    print("h")
 
 def create_regions(world) -> None:
     exclude_lunatic = world.options.exclude_lunatic
@@ -19,6 +23,9 @@ def create_regions(world) -> None:
 # Creates all regions with their respective locations added on.
 def generate_regions(world, exclude_lunatic, extra_stage_acquire, split_by_difficulty) -> list[Region]:
     region_list = []
+
+    victory_location = None
+    victory_location_name = None
 
     init_region = Region("Menu", world.player, world.multiworld)
     region_list.append(init_region)
@@ -52,9 +59,6 @@ def generate_regions(world, exclude_lunatic, extra_stage_acquire, split_by_diffi
                 stage_region.add_locations(get_location_names_with_ids([f"[{character}] - {check}" 
                                                                         for check in STAGE_CHECKS[stage - 1]]), TouhouUMLocation)
                 stage_region.add_locations(get_location_names_with_ids([f"[{character}] Stage {stage} Clear"]), TouhouUMLocation)
-
-                if stage == 6:
-                    stage_region.add_locations(get_location_names_with_ids([f"Completed the game as {character}"]), TouhouUMLocation)
                     
                 region_list.append(stage_region)
     else:
@@ -63,9 +67,6 @@ def generate_regions(world, exclude_lunatic, extra_stage_acquire, split_by_diffi
 
                 stage_region = Region(f"[{character}] Stage {stage}", world.player, world.multiworld)
                 stage_region.add_locations(get_location_names_with_ids([f"[{character}] Stage {stage} Clear"]), TouhouUMLocation)
-
-                if stage == 6:
-                    stage_region.add_locations(get_location_names_with_ids([f"Completed the game as {character}"]), TouhouUMLocation)
 
                 region_list.append(stage_region)
 
@@ -91,6 +92,15 @@ def generate_regions(world, exclude_lunatic, extra_stage_acquire, split_by_diffi
 
         stage_region = Region("Extra Stage Clear", world.player, world.multiworld)
         stage_region.add_locations(get_location_names_with_ids([f"Purchased {MOMOYO_CARD_NAME}"]), TouhouUMLocation)
+
+        # Victory location (fixed items) for defeating Momoyo
+        for character in CHARACTER_NAMES:
+            victory_location_name = f"[{character}] Defeated Momoyo"
+            victory_location = TouhouUMLocation(world.player, victory_location_name, location_table[victory_location_name], stage_region)
+            victory_location.place_locked_item(world.create_item(victory_location_name))
+
+            stage_region.locations.append(victory_location)
+
         region_list.append(stage_region)
 
     # Beating the game.
@@ -98,8 +108,24 @@ def generate_regions(world, exclude_lunatic, extra_stage_acquire, split_by_diffi
     stage_region.add_locations(get_location_names_with_ids([f"Unlocked {MAGATAMA_CARD_NAME}"]), TouhouUMLocation)
     region_list.append(stage_region)
 
+    # Victory locations (these are fixed)
+    
+    for character in CHARACTER_NAMES:
+        victory_location_name = f"[{character}] Defeated Chimata Ending"
+        victory_location = TouhouUMLocation(world.player, victory_location_name, location_table[victory_location_name], stage_region)
+        victory_location.place_locked_item(world.create_item(victory_location_name))
+
+        stage_region.locations.append(victory_location)
+
+        victory_location_name = f"[{character}][Blank Card] Defeated Chimata Ending"
+        victory_location = TouhouUMLocation(world.player, victory_location_name, location_table[victory_location_name], stage_region)
+        victory_location.place_locked_item(world.create_item(victory_location_name))
+
+        stage_region.locations.append(victory_location)
+
     return region_list
 
+# Connect all regions together. Creates Entrances.
 def connect_regions(world) -> None:
     exclude_lunatic = world.options.exclude_lunatic
     extra_stage_acquire = world.options.extra_stage

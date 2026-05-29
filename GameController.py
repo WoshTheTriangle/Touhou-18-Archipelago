@@ -58,31 +58,31 @@ class GameController:
     def getLives(self) -> int:
         return self.pm.read_int(self.addrLives)
 
-    def setLives(self, value) -> None:
+    def setLives(self, value: int) -> None:
         self.pm.write_int(self.addrLives, value)
 
     def getBombs(self) -> int:
         return self.pm.read_int(self.addrBombs)
 
-    def setBombs(self, value) -> None:
+    def setBombs(self, value: int) -> None:
         self.pm.write_int(self.addrBombs, value)
 
     def getLifeFrags(self) -> int:
         return self.pm.read_int(self.addrLifeFrag)
 
-    def setLifeFrags(self, value) -> None:
+    def setLifeFrags(self, value: int) -> None:
         self.pm.write_int(self.addrLifeFrag, value)
 
     def getBombFrags(self) -> int:
         return self.pm.read_int(self.addrBombFrag)
 
-    def setBombFrags(self, value) -> None:
+    def setBombFrags(self, value: int) -> None:
         self.pm.write_int(self.addrBombFrag, value)
 
     def getFunds(self) -> int:
         return self.pm.read_int(self.addrFunds)
 
-    def setFunds(self, value) -> None:
+    def setFunds(self, value: int) -> None:
         self.pm.write_int(self.addrFunds, value)
 
     def getDifficulty(self) -> int:
@@ -91,14 +91,14 @@ class GameController:
     def getPower(self) -> int:
         return self.pm.read_int(self.addrPower)
 
-    def setPower(self, value) -> None:
+    def setPower(self, value: int) -> None:
         self.pm.write_int(self.addrPower, value)
 
     def getTimeInStage(self) -> int:
         return self.pm.read_int(self.addrTimeInStage)
 
     # The only real state of importance is 4 since that kills the player.
-    def setPlayerState(self, value) -> None:
+    def setPlayerState(self, value: int) -> None:
         address = getPointerAddress(self.pm, self.ADDR_PLAYER_PTR, ADDR_PLAYER_STATE_OFFSET)
         self.pm.write_int(address, value)
 
@@ -113,7 +113,7 @@ class GameController:
     def getContinues(self) -> int:
         return self.pm.read_int(self.addrContinues)
 
-    def setContinues(self, value) -> None:
+    def setContinues(self, value: int) -> None:
         self.pm.write_int(self.addrContinues, value)
 
     '''
@@ -184,7 +184,7 @@ class GameController:
 
     # Cards are held in a linked list so we need to move throughout the list to find all references.
     # Each node has 0x0 - *Current_Entry, 0x4 - *Next_Entry, 0x8 - *Previous_Entry
-    def getCardAddresses(self, numCards) -> list:
+    def getCardAddresses(self, numCards: int) -> list:
         cards = []
         address_base = getPointerAddress(self.pm, self.cardManagerPtr, ADDR_CARD_LIST_HEAD_OFFSET)
 
@@ -197,7 +197,7 @@ class GameController:
         return cards
 
     # Uses getCardAddresses to return the IDs of every card.
-    def getCardIDs(self, numCards) -> list:
+    def getCardIDs(self, numCards: int) -> list:
         card_id_list = []
         card_addresses = self.getCardAddresses(numCards)
         for card in card_addresses:
@@ -208,12 +208,12 @@ class GameController:
         return card_id_list
 
     # Puts the null vtable in the vtable for a card, essentially disabling it.
-    def disableCard(self, cardPtr) -> None:
+    def disableCard(self, cardPtr: int) -> None:
         address = self.pm.read_int(cardPtr)
         self.pm.write_int(address, VTABLE_NULL_ADDR + self.pm.base_address)
 
     # Inserts the card's regular vtable back into it, making it act as normal.
-    def enableCard(self, cardPtr) -> None:
+    def enableCard(self, cardPtr: int) -> None:
         address = self.pm.read_int(cardPtr)
         card_id = self.pm.read_int(address + 0x4)
         vtable_address = CARD_ID_TO_VTABLE_ADDR[card_id] + self.pm.base_address
@@ -231,7 +231,7 @@ class GameController:
         return self.pm.read_int(shopCount)
 
     # Return all addresses found in the shop, they are stored in an array.
-    def getShopCards(self, numCards) -> list:
+    def getShopCards(self, numCards: int) -> list:
         cards = []
         base_address = getPointerAddress(self.pm, self.shopPtr, ADDR_SHOP_CARD_LIST_OFFSET)
         for i in range(numCards):
@@ -251,28 +251,35 @@ class GameController:
         return self.pm.read_int(address)
 
     # Can be used to kick the player out of the shop purchasing option.
-    def setShopMenuState(self, new_val) -> None:
+    def setShopMenuState(self, new_val: int) -> None:
         address = getPointerAddress(self.pm, self.shopPtr, ADDR_SHOP_MENU_STATE_OFFSET)
         self.pm.write_int(address, new_val)
 
     # Doesn't override the graphic but it does override what is being purchased.
-    def setShopCard(self, pos, new_shop_card_id) -> None:
+    def setShopCard(self, pos: int, new_shop_card_id: int) -> None:
         base_address = getPointerAddress(self.pm, self.shopPtr, ADDR_SHOP_CARD_LIST_OFFSET)
         base_address += (pos * 0x4)
         self.pm.write_int(base_address, new_shop_card_id)
 
     '''
-    Card Unlocks
+    Card Unlocks and Achievements
 
     It should be noted that the order still works with card IDs despite them not being
     formatted in the same order in the unlocked cards menu.
     Thanks ZUN.
     '''
-    def getCardUnlockedState(self, id) -> bool:
+    def getCardUnlockedState(self, id: int) -> bool:
         base_address = getPointerAddress(self.pm, self.scorefilePtr, ADDR_UNLOCKED_CARD_OFFSET)
-        print(self.pm.read_bytes(base_address + id, 1) == bytes([1]))
         return self.pm.read_bytes(base_address + id, 1) == bytes([1])
 
-    def setCardUnlockState(self, id, new_value) -> None:
+    def setCardUnlockState(self, id: int, new_value: int) -> None:
         base_address = getPointerAddress(self.pm, self.scorefilePtr, ADDR_UNLOCKED_CARD_OFFSET)
+        self.pm.write_bytes(base_address + id, bytes([new_value]), 1)
+
+    def getAchievementState(self, id: int) -> bool:
+        base_address = getPointerAddress(self.pm, self.scorefilePtr, ADDR_ACHIEVEMENT_OFFSET)
+        return self.pm.read_bytes(base_address + id, 1) == bytes([1])
+
+    def setAchievementState(self, id: int, new_value: int) -> None:
+        base_address = getPointerAddress(self.pm, self.scorefilePtr, ADDR_ACHIEVEMENT_OFFSET)
         self.pm.write_bytes(base_address + id, bytes([new_value]), 1)

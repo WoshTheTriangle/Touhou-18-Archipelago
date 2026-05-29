@@ -72,6 +72,10 @@ def getStageLocationMapping(split_by_difficulty: bool):
         if not valid_location:
             continue
 
+        '''
+        Creating Mapping
+        '''
+
         # Difficulty
         if split_by_difficulty:
             difficulty_counter = -1
@@ -124,6 +128,40 @@ def getAPIDsForCards():
             continue
         else:
             mapping[id] = value
+    return mapping
+
+def getLocationIDsToEndingMapping():
+    mapping = {}
+    for location_name, id in location_table.items():
+        valid_location = False
+        character_id = None
+        goal_id = None
+
+        if "Defeated Chimata Ending" in location_name:
+            valid_location = True
+
+        if "Defeated Momoyo" in location_name:
+            valid_location = True
+
+        if not valid_location:
+            continue
+
+        for character in CHARACTER_NAMES:
+            if character in location_name:
+                character_id = CHARACTER_NAMES_TO_ID[character]
+                break
+
+        goal_id = GOAL_CHIMATA
+
+        if "[Blank Card]" in location_name:
+            goal_id = GOAL_CHIMATA_BLANK
+        
+        if "Momoyo" in location_name:
+            goal_id = GOAL_MOMOYO
+
+        mapping[id] = [character_id, goal_id]
+        print("h")
+
     return mapping
 
 def shop_card_id_to_card_id(handler, shop_card_list: list):

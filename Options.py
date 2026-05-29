@@ -50,7 +50,7 @@ class MagatamaRequirement(Range):
     display_name = "Number of Cards Needed to Unlock Sky-Blue Magatama"
 
     range_start = 0
-    range_end = 55
+    range_end = 52
 
     default = 0
 
@@ -61,7 +61,7 @@ class BlankCardRequirement(Range):
     display_name = "Number of Cards Needed to Unlock Blank Card"
 
     range_start = 0
-    range_end = 55
+    range_end = 52
     default = 20
 
 class Goal(Choice):
@@ -99,7 +99,7 @@ class CardsRequired(Range):
     """
     display_name = "Amount of ability cards required to complete the goal"
     range_start = 1
-    range_end = 56
+    range_end = 52
     default = 30
 
 class DifficultyCheck(Toggle):

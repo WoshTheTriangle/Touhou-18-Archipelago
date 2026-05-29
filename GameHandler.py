@@ -25,6 +25,10 @@ class GameHandler:
     cardsPurchased: list = []
     charactersUnlocked: dict = {}
 
+    endingCompleted: dict = {}
+    altEndingCompleted: dict = {}
+    extraCompleted: dict = {}
+
     difficultiesUnlocked = []
 
     extraUnlocked: dict = {}
@@ -45,10 +49,15 @@ class GameHandler:
         self.gameController = GameController()
         self.init_game(self)
         
-        
+    # Change settings within the game to initialize it for Archipelago
     def init_game(self):
-        print("init game todo")
-        #TODO
+        for i in range(56):
+            self.setCardUnlockState(i, 0)
+
+        for i in range(30):
+            self.setAchievementState(i, False)
+
+        # TODO set card slots unlocked to 1
 
     def reset(self) -> None:
 
@@ -70,9 +79,15 @@ class GameHandler:
                                                             [False, False], [False, False], [False, False],
                                                             [False, False]]
 
-            self.extraBeaten[character] = [[False, False]]
+            self.extraBeaten[character] = [False, False]
 
             self.extraUnlocked[character] = False
+
+            self.endingCompleted[character] = False
+            self.altEndingCompleted[character] = False
+            self.extraCompleted[character] = False
+
+        print(self.endingCompleted) #TODO
 
         self.charactersUnlocked[CHARACTER_REIMU] = False
         self.charactersUnlocked[CHARACTER_MARISA] = False
@@ -152,26 +167,50 @@ class GameHandler:
 
         return bossBeaten
 
+    # Check if goal conditions from the goal map has been completed.
+    def isGoalCompleted(self, character, goal_id) -> bool:
+        goal_completed = False
+
+        if goal_id == GOAL_CHIMATA:
+            for difficulty in range(4):
+                goal_completed = goal_completed or self.bossesBeaten[character][difficulty][6][1]
+                #goal_completed = self.bossesBeaten[character][1]
+        elif goal_id == GOAL_MOMOYO:
+            goal_completed = self.extraBeaten[character][1]
+        elif goal_id == GOAL_CHIMATA_BLANK:
+            goal_completed = self.getAchievementState(character * 2)
+
+        if goal_completed:
+            print("chimata successfully checked")
+        return goal_completed
+
+    # Essentially hashing completions for review in checking if goals have been met.
+    def setGoalCompleted(self, character: int, goal_id: int) -> None:
+        if goal_id == GOAL_CHIMATA:
+            self.endingCompleted[character] = True
+        elif goal_id == GOAL_MOMOYO:
+            self.extraCompleted[character] = True
+        elif goal_id == GOAL_CHIMATA_BLANK:
+           self.altEndingCompleted[character] = True
+
     # Set the boss you just defeated for the first time to defeated by checking it off in the list.
     def setCurrentBossDefeated(self, counter, check_difficulties: bool = False, check_lower_difficulties: bool = False) -> None:
         currentStage = self.getStage()
         current_difficulty = self.getDifficulty()
+        current_character = self.gameController.getCurrentCharacter()
         
         if (currentStage == 7):
-            self.extraBeaten[self.gameController.getCurrentCharacter()][counter] = True
+            self.extraBeaten[current_character][counter] = True
         else:
-            self.bossesBeaten[self.gameController.getCurrentCharacter()][self.getDifficulty()][self.gameController.getStage() - 1][counter] = True
+            self.bossesBeaten[current_character][self.getDifficulty()][self.gameController.getStage() - 1][counter] = True
             
             if check_lower_difficulties:
                 if difficultiesUnlocked[DIFFICULTY_EASY]:
-                    self.bossesBeaten[self.gameController.getCurrentCharacter()][EASY][self.gameController.getStage() - 1][counter] = True
+                    self.bossesBeaten[current_character][EASY][self.gameController.getStage() - 1][counter] = True
                 if difficultiesUnlocked[DIFFICULTY_NORMAL] and current_difficulty >= 1:
-                    self.bossesBeaten[self.gameController.getCurrentCharacter()][NORMAL][self.gameController.getStage() - 1][counter] = True
+                    self.bossesBeaten[current_character][NORMAL][self.gameController.getStage() - 1][counter] = True
                 if difficultiesUnlocked[DIFFICULTY_HARD] and current_difficulty >= 2:
-                    self.bossesBeaten[self.gameController.getCurrentCharacter()][HARD][self.gameController.getStage() - 1][counter] = True
-        
-    def isStageUnlocked(self, stage_num) -> bool:
-        return self.stagesUnlocked[stage_num]
+                    self.bossesBeaten[current_character][HARD][self.gameController.getStage() - 1][counter] = True
     
     # Force the player back to the main menu from anywhere.
     def forceToMainMenu(self) -> None:
@@ -191,7 +230,7 @@ class GameHandler:
     def getTimeInStage(self) -> int:
         return self.gameController.getTimeInStage()
 
-    def getCurrentCharacter() -> int:
+    def getCurrentCharacter(self) -> int:
         return self.gameController.getCurrentCharacter()
 
     def getScore(self) -> int:
@@ -218,7 +257,8 @@ class GameHandler:
     def getBombs(self) -> int:
         return self.gameController.getBombs()
 
-    def setBombs(self, value) -> None:
+    def setBombs(self, value: int) -> None:
+        print(value)
         self.gameController.setBombs(clamp(0, 8, value))
 
     def getLifeFrags(self) -> int:
@@ -266,6 +306,14 @@ class GameHandler:
         new_val = 0
         if new_state: new_val = 1
         self.gameController.setCardUnlockState(id, new_val)
+
+    def getAchievementState(self, id: int) -> bool:
+        return self.gameController.getAchievementState(id)
+
+    def setAchievementState(self, id: int, new_state: bool) -> None:
+        new_val = 0
+        if new_state: new_val = 1
+        self.gameController.setAchievementState(id, new_val)
 
     '''
     Helper Functions
@@ -367,6 +415,9 @@ class GameHandler:
         if id == 56: return
 
         self.cardsUnlocked[id] = True
+
+    def isStageUnlocked(self, character: int, stage_num: int) -> bool:
+        return self.stagesUnlocked[character][stage_num]
 
     '''
     Shop Settings

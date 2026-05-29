@@ -14,6 +14,7 @@ CATEGORY_STAGE = "Stage Progression"
 CATEGORY_CHARACTER = "Character Unlock"
 CATEGORY_TRAP = "Trap"
 CATEGORY_CARD = "Ability Cards"
+CATEGORY_VICTORY = "Victory"
 
 class TouhouUMItem(Item):
     game: str = DISPLAY_NAME
@@ -127,7 +128,7 @@ def create_all_items(world) -> None:
         if data.code == 353:
             continue
 
-        if data.category == CATEGORY_FILLER or data.category == CATEGORY_TRAP:
+        if data.category == CATEGORY_FILLER or data.category == CATEGORY_TRAP or data.category == CATEGORY_VICTORY:
             #print("FILLER")
             continue
 
@@ -262,6 +263,20 @@ item_table: Dict[str, TouhouUMItemData] = {
     "-50 Power" : TouhouUMItemData(CATEGORY_TRAP, 507, ItemClassification.trap),
     "50% Damage" : TouhouUMItemData(CATEGORY_TRAP, 508, ItemClassification.trap),
     "Death" : TouhouUMItemData(CATEGORY_TRAP, 509, ItemClassification.trap),
+
+    # Victory conditions
+    "[Reimu] Defeated Chimata Ending" : TouhouUMItemData(CATEGORY_VICTORY, 600, ItemClassification.progression),
+    "[Marisa] Defeated Chimata Ending" : TouhouUMItemData(CATEGORY_VICTORY, 601, ItemClassification.progression),
+    "[Sakuya] Defeated Chimata Ending" : TouhouUMItemData(CATEGORY_VICTORY, 602, ItemClassification.progression),
+    "[Sanae] Defeated Chimata Ending" : TouhouUMItemData(CATEGORY_VICTORY, 603, ItemClassification.progression),
+    "[Reimu][Blank Card] Defeated Chimata Ending" : TouhouUMItemData(CATEGORY_VICTORY, 604, ItemClassification.progression),
+    "[Marisa][Blank Card] Defeated Chimata Ending" : TouhouUMItemData(CATEGORY_VICTORY, 605, ItemClassification.progression),
+    "[Sakuya][Blank Card] Defeated Chimata Ending" : TouhouUMItemData(CATEGORY_VICTORY, 606, ItemClassification.progression),
+    "[Sanae][Blank Card] Defeated Chimata Ending" : TouhouUMItemData(CATEGORY_VICTORY, 607, ItemClassification.progression),
+    "[Reimu] Defeated Momoyo" : TouhouUMItemData(CATEGORY_VICTORY, 608, ItemClassification.progression),
+    "[Marisa] Defeated Momoyo" : TouhouUMItemData(CATEGORY_VICTORY, 609, ItemClassification.progression),
+    "[Sakuya] Defeated Momoyo" : TouhouUMItemData(CATEGORY_VICTORY, 610, ItemClassification.progression),
+    "[Sanae] Defeated Momoyo" : TouhouUMItemData(CATEGORY_VICTORY, 611, ItemClassification.progression)
 }
 
 # Subsets of item_table
@@ -335,7 +350,9 @@ ITEM_ID_TO_CARD_ID: Dict[int, int] = {
 PERMANENT_ITEMS = [1, 2, 3, 4, 5,
                    100, 101, 102, 103,
                    200, 201, 202, 203, 204, 205, 206,
-                   207, 208, 209]
+                   207, 208, 209,
+                   600, 601, 602, 603, 604, 605, 606,
+                   607, 608, 609, 610, 611]
 
 STAGE_ONLY_ITEMS = [6, 7, 8, 9, 10, 11,
                     400, 401, 402, 403, 404, 405,
@@ -343,3 +360,10 @@ STAGE_ONLY_ITEMS = [6, 7, 8, 9, 10, 11,
                     507, 508, 509]
 
 DURATION_BASED_ITEMS = [500, 501, 502, 508]
+
+GOAL_BASED_ITEMS = [600, 601, 602, 603, 604, 605, 606,
+                    607, 608, 609, 610, 611]
+
+GOAL_CHIMATA_ITEMS = [600, 601, 602, 603]
+GOAL_CHIMATA_BLANK_ITEMS = [604, 605, 606, 607]
+GOAL_MOMOYO_ITEMS = [608, 609, 610, 611]

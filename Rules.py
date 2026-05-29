@@ -12,10 +12,10 @@ def set_all_rules(world) -> None:
 
 
 def set_all_entrance_rules(world) -> None:
-    print("to be added")
+    print("entrance rules to be added")
 
 def set_all_location_rules(world) -> None:
-    print("to be added")
+    print("location rules to be added")
 
 def set_completion_condition(world) -> None:
     # Frogs go mlem mlem, snakes go psbpspsbsb

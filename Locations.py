@@ -85,7 +85,19 @@ location_offset += 1
 
 # Endings Locations
 for character in CHARACTER_NAMES:
-    location = f"Completed the game as {character}"
+    location = f"[{character}] Defeated Chimata Ending"
+    location_table[location] = location_offset
+    location_id_to_name[location_offset] = location
+    location_offset += 1
+
+for character in CHARACTER_NAMES:
+    location = f"[{character}][Blank Card] Defeated Chimata Ending"
+    location_table[location] = location_offset
+    location_id_to_name[location_offset] = location
+    location_offset += 1
+
+for character in CHARACTER_NAMES:
+    location = f"[{character}] Defeated Momoyo"
     location_table[location] = location_offset
     location_id_to_name[location_offset] = location
     location_offset += 1

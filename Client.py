@@ -23,7 +23,7 @@ from .Locations import *
 from .variables.meta_data import *
 from .Items import *
 from .variables import stage_constants, card_constants
-from .Tools import getStageLocationMapping, shop_card_id_to_card_id, getAPIDsForCards
+from .Tools import *
 
 class TouhouUMClientProcessor(ClientCommandProcessor):
     def __init__(self, ctx):
@@ -59,6 +59,7 @@ class TouhouUMContext(CommonContext):
 
         self.stage_location_mappings = []
         self.location_id_to_card_id = []
+        self.location_id_to_ending_mapping = []
 
         self.able_to_check = False
 
@@ -70,6 +71,8 @@ class TouhouUMContext(CommonContext):
         self.is_connected: bool = False
         self.loading_data_setup = True
         self.game: str = DISPLAY_NAME
+
+        self.location_semaphore_in_use = False
 
         self.all_location_ids = []
         self.previous_location_checked = []
@@ -118,8 +121,11 @@ class TouhouUMContext(CommonContext):
 
         self.stage_location_mappings = []
         self.location_id_to_card_id = []
+        self.location_id_to_ending_mapping = []
 
         self.checked_if_owns_stage = False
+
+        self.location_semaphore_in_use = False
 
         self.unlocked_characters = []
         self.unlocked_cards = []
@@ -227,8 +233,9 @@ class TouhouUMContext(CommonContext):
             self.custom_data_keys_list = [f"{str(self.team)}_{str(self.slot)}_LastItemIndexTH18"] 
 
             #TODO: Custom stuff and location mapping
-            self.stage_location_mappings = getStageLocationMapping(self.options["split_by_difficulty"])
+            self.stage_location_mappings = getStageLocationMapping(self.options["difficulty_check"])
             self.location_id_to_card_id = getAPIDsForCards()
+            self.location_id_to_ending_mapping = getLocationIDsToEndingMapping()
 
             if self.handler is not None:
                 self.handler.reset()
@@ -268,8 +275,8 @@ class TouhouUMContext(CommonContext):
         if cmd == "SetReply":
             print("To be added")
 
-    def check_victory(self) -> bool:
-        print("soon")
+    async def send_victory(self) -> None:
+        await self.send_msgs([{"cmd": 'StatusUpdate', "status": 30}])
 
     async def get_custom_data_from_server(self):
         """
@@ -293,6 +300,10 @@ class TouhouUMContext(CommonContext):
         """
         All checking required to update locations the player has found.
         """
+        self.location_semaphore_in_use = True
+
+        print("Location Check")
+
         new_locations = []
 
         # Stage-related Locations
@@ -303,13 +314,22 @@ class TouhouUMContext(CommonContext):
         # New cards purchased
         for id, card_id in self.location_id_to_card_id.items():
             if id not in self.previous_location_checked and self.handler.hasCardBeenPurchased(card_id):
+                print("new card")
+                new_locations.append(id)
+
+        # Goal check
+        for id, ending_map in self.location_id_to_ending_mapping.items():
+            if id not in self.previous_location_checked and self.handler.isGoalCompleted(*ending_map):
+                self.handler.setGoalCompleted(*ending_map)
                 new_locations.append(id)
         
         # If there are any new locations, add them to the list and send them to the server.
         if new_locations:
-            print("the new")
+            print(f"the new - {new_locations}")
             self.previous_location_checked += new_locations
             await self.send_msgs([{"cmd": 'LocationChecks', "locations": new_locations}])
+
+        self.location_semaphore_in_use = False
 
     async def send_deathlink(self):
         """
@@ -395,7 +415,6 @@ class TouhouUMContext(CommonContext):
                 self.card_item_queue.append(item_id)
             # We do not want to repeat stage-only items each reset such as traps.
             elif item_id in STAGE_ONLY_ITEMS and network_index + i >= self.last_received_item_index_server:
-                print("game queue append")
                 self.game_item_queue.append(item_id)
 
         self.handle_card_items()
@@ -411,18 +430,17 @@ class TouhouUMContext(CommonContext):
             card_id = ITEM_ID_TO_CARD_ID.get(card_item, -1)
             if card_id == -1:
                 logger.print("Error: Card ID does not exist")
-                self.card_item_queue.remove(card_item)
                 continue
             
             self.handler.receiveCard(card_id)
-            # Item Cards may be weird...
-            #TODO I may want to do some weird thing where I disable them when in-stage but 
-            # re-enable them out of stage to give the illusion of prettiness.
+  
             if not card_id in ITEM_CARDS:
                 self.handler.setCardUnlockState(card_id, True)
             
+        self.card_item_queue = []
 
-            self.card_item_queue.remove(card_item)
+        if self.options["goal"] == GOAL_ITEMS or self.options["goal"] == GOAL_ALL:
+            self.check_victory()
         
     #TODO
     def handle_permanent_items(self):
@@ -430,6 +448,7 @@ class TouhouUMContext(CommonContext):
         These items can be processed anywhere at any time. The vast majority of them.
         """
         for item_id in self.permanent_item_queue:
+            
             match item_id:
                 case 1:
                     self.handler.addInitialLives()
@@ -494,8 +513,48 @@ class TouhouUMContext(CommonContext):
                 case 209:
                     self.handler.unlock_extra(CHARACTER_SANAE)
                     print("extra stage sanae")
+                case 600:
+                    print("Chimata Defeated as Reimu")
+                    self.handler.setGoalCompleted(CHARACTER_REIMU, GOAL_CHIMATA)
+                case 601:
+                    print("Chimata Defeated as Marisa")
+                    self.handler.setGoalCompleted(CHARACTER_MARISA, GOAL_CHIMATA)
+                case 602:
+                    print("Chimata Defeated as Sakuya")
+                    self.handler.setGoalCompleted(CHARACTER_SAKUYA, GOAL_CHIMATA)
+                case 603:
+                    print("Chimata Defeated as Sanae")
+                    self.handler.setGoalCompleted(CHARACTER_SANAE, GOAL_CHIMATA)
+                case 604:
+                    self.handler.setGoalCompleted(CHARACTER_REIMU, GOAL_CHIMATA_BLANK)
+                    print("Chimata Alt Ending as Reimu")
+                case 605:
+                    self.handler.setGoalCompleted(CHARACTER_MARISA, GOAL_CHIMATA_BLANK)
+                    print("Chimata Alt Ending as Marisa")
+                case 606:
+                    self.handler.setGoalCompleted(CHARACTER_SAKUYA, GOAL_CHIMATA_BLANK)
+                    print("Chimata Alt Ending as Sakuya")
+                case 607:
+                    self.handler.setGoalCompleted(CHARACTER_SANAE, GOAL_CHIMATA_BLANK)
+                    print("Chimata Alt Ending as Sanae")
+                case 608:  
+                    self.handler.setGoalCompleted(CHARACTER_REIMU, GOAL_MOMOYO)
+                    print("Extra Completed as Reimu")
+                case 609:
+                    self.handler.setGoalCompleted(CHARACTER_MARISA, GOAL_MOMOYO)
+                    print("Extra Completed as Marisa")
+                case 610:
+                    self.handler.setGoalCompleted(CHARACTER_SAKUYA, GOAL_MOMOYO)
+                    print("Extra Completed as Sakuya")
+                case 611:
+                    self.handler.setGoalCompleted(CHARACTER_SANAE, GOAL_MOMOYO) 
+                    print("Extra Completed as Sanae")  
 
-            self.permanent_item_queue.remove(item_id)
+            self.permanent_item_queue = []
+
+            # Could be a victory condition.
+            if item_id >= 600 and item_id <= 612:
+                self.check_victory()
 
     async def add_to_item_list(self, item_list: list[NetworkItem]):
         """
@@ -516,6 +575,68 @@ class TouhouUMContext(CommonContext):
 
         asyncio.create_task(self.update_last_item_id())
 
+    def check_victory(self) -> None:
+        """
+        Check the handler to see if the player has achieved all conditions to win.
+        If so, send the signal to Archipelago.
+        """
+        goal_condition = self.options["goal"]
+        characters_needed = self.options["ending_req"]
+        cards_needed = self.options["card_req"]
+
+        chimata_index = 0
+        momoyo_index = 0
+        chimata_alt_index = 0
+        card_count_index = 0
+
+        chimata_victory = False
+        momoyo_victory = False
+        chimata_alt_victory = False
+        card_count_victory = False
+
+        achieved_victory = False
+
+        if goal_condition == GOAL_CHIMATA or goal_condition == GOAL_ALL:
+            for character in CHARACTERS:
+                if self.handler.endingCompleted[character]:
+                    chimata_index += 1
+            if chimata_index >= characters_needed:
+                achieved_victory = True
+                chimata_victory = True
+        
+        if goal_condition == GOAL_MOMOYO or goal_condition == GOAL_ALL:
+            for character in CHARACTERS:
+                if self.handler.extraCompleted[character]:
+                    momoyo_index += 1
+            if momoyo_index >= characters_needed:
+                achieved_victory = True
+                momoyo_victory = True
+        
+        if goal_condition == GOAL_CHIMATA_BLANK or goal_condition == GOAL_ALL:
+            for character in CHARACTERS:
+                if self.handler.altEndingCompleted[character]:
+                    chimata_alt_index += 1
+            if chimata_alt_index >= characters_needed:
+                achieved_victory = True
+                chimata_alt_victory = True
+        
+        if goal_condition == GOAL_ITEMS or goal_condition == GOAL_ALL:
+            for card in ABILITY_CARD_LIST:
+                if self.handler.hasCardBeenReceived(card):
+                    card_count_index += 1
+            if card_count_index >= cards_needed:
+                achieved_victory = True
+                card_count_victory = True
+        
+        if goal_condition == GOAL_ALL:
+            achieved_victory = chimata_victory and chimata_alt_victory and card_count_victory
+            if self.options["extra_stage"] != EXTRA_NOT_INCLUDED:
+                achieved_victory = achieved_victory and momoyo_victory
+
+        if achieved_victory:
+            print("Sending victory")
+            asyncio.create_task(self.send_victory())
+
     '''
     Async Loops
     '''
@@ -530,20 +651,27 @@ class TouhouUMContext(CommonContext):
             
             print("Game Loop Init")
 
+            difficulty_check = self.options["difficulty_check"]
+            lower_difficulty_check = self.options["check_mult_difficulties"]
+
             boss_present = False
-            
             boss_counter = -1
             given_resources = False
 
+            new_lives = 0
             current_lives = 0
+
+            new_bombs = 0
+            current_bombs = 0
+
             current_score = 0
             current_continue = 0
             current_stage = 0
-            
+            current_character = None
+
             currently_in_stage = True
 
             time_in_stage = 0
-
             game_state = -1
 
             while not self.exit_event.is_set() and self.handler and not self.in_error:
@@ -569,16 +697,23 @@ class TouhouUMContext(CommonContext):
                         current_score = self.handler.getScore()
                         current_continue = self.handler.getContinues()
                         current_stage = self.handler.getStage()
+                        self.handler.updateCardLockState()
+
+                        # New game
+                        if current_stage == 1:
+                            self.handler.setContinues(self.handler.continues)
+                            current_character = self.handler.getCurrentCharacter()
+                            given_resources = False
 
                         if False: #TODO add state to see impossible stuff
                             self.able_to_check = False
 
                     if not given_resources:
                         await asyncio.sleep(0.5)
-                        #TODO give player resources
-
-                        # Disable stuff we don't have unlocked
-                        self.handler.updateCardLockState()
+                        
+                        self.handler.setLives(self.handler.initial_lives)
+                        self.handler.setBombs(self.handler.initial_bombs)
+                        
                         given_resources = True
                         current_lives = self.handler.getLives()
 
@@ -590,9 +725,10 @@ class TouhouUMContext(CommonContext):
 
                         if time_in_stage >= 120:
                             self.checked_if_owns_stage = True
-
+                            
                             # If the current stage is not unlocked, send the player back.
-                            if not self.handler.isStageUnlocked(current_stage):
+                            if not self.handler.isStageUnlocked(current_character, current_stage):
+                                print("get outta here")
                                 self.handler.forceToMainMenu()
                                 self.checked_if_owns_stage = False
 
@@ -620,23 +756,34 @@ class TouhouUMContext(CommonContext):
                             # Boss slain.
                             if not self.handler.isBossActive():
                                 if not self.handler.isCurrentBossDefeated(boss_counter):
-                                    self.handler.setCurrentBossDefeated(boss_counter)
+                                    self.handler.setCurrentBossDefeated(boss_counter, difficulty_check, lower_difficulty_check)
                                     await self.update_locations_checked()
                                 boss_present = False
 
                     # Did the player die?
                     new_lives = self.handler.getLives()
                     if current_lives != new_lives:
-                        # Seems they gained a Life
+                        if new_lives > self.handler.max_lives:
+                            self.handler.setLives(self.handler.max_lives)
+                        # You died
                         if current_lives > new_lives:
-                            self.handler.setBombs(3) # made up a number for now TODO fix later
+                            if self.handler.initial_bombs < self.handler.max_bombs:
+                                self.handler.setBombs(self.handler.initial_bombs)
+                            else:
+                                self.handler.setBombs(self.handler.max_bombs)
                         current_lives = new_lives
+
+                    # Check if the player has more bombs than max.
+                    new_bombs = self.handler.getBombs()
+                    if current_bombs != new_bombs:
+                        if new_bombs > self.handler.max_bombs:
+                            self.handler.setBombs(self.handler.max_bombs)
+                        current_bombs = new_bombs
 
                 # Went to main menu or shop.
                 elif currently_in_stage:
                     currently_in_stage = False
                     self.checked_if_owns_stage = False
-                    given_resources = False
 
         except Exception as e:
             logger.error(f"Main ERROR: {e}")
@@ -691,6 +838,7 @@ class TouhouUMContext(CommonContext):
                         for i in range(len(shop_card_list)):   
                             if (self.handler.cardsPurchased[shop_card_id_list[i]] 
                             and not self.handler.cardsUnlocked[shop_card_id_list[i]]):
+                                print("disabled")
                                 self.handler.disableCard(shop_card_list[i])
 
                 # Leaving Shop    
@@ -726,6 +874,8 @@ class TouhouUMContext(CommonContext):
                                 temp_value = self.handler.getLives()
                                 temp_value -= 1
                                 self.handler.setLives(temp_value)
+                                self.handler.setCardUnlockState(LIFE_CARD, False) 
+
                         if (not self.handler.hasCardBeenPurchased(BOMB_CARD) 
                         and self.handler.getCardUnlockedState(BOMB_CARD)): 
                             print("b")
@@ -734,18 +884,24 @@ class TouhouUMContext(CommonContext):
                                 temp_value = self.handler.getBombs()
                                 temp_value -= 1
                                 self.handler.setBombs(temp_value)
+                                self.handler.setCardUnlockState(BOMB_CARD, False) 
+
                         if (not self.handler.hasCardBeenPurchased(NAZRIN_CARD) 
                         and self.handler.getCardUnlockedState(NAZRIN_CARD)): 
                             print("c")
                             self.handler.purchaseCard(NAZRIN_CARD)
                             if not self.handler.hasCardBeenReceived(NAZRIN_CARD):
                                 self.handler.addFunds(-50)
+                                self.handler.setCardUnlockState(NAZRIN_CARD, False) 
+
                         if (not self.handler.hasCardBeenPurchased(RINGO_CARD) 
                         and self.handler.getCardUnlockedState(RINGO_CARD)):
                             print("d")
                             self.handler.purchaseCard(RINGO_CARD)
                             if not self.handler.hasCardBeenReceived(RINGO_CARD):
                                 self.handler.setPower(current_power)
+                                self.handler.setCardUnlockState(RINGO_CARD, False) 
+
                         if (not self.handler.hasCardBeenPurchased(MOKOU_CARD) 
                         and self.handler.getCardUnlockedState(MOKOU_CARD)):
                             print("e")
@@ -754,6 +910,7 @@ class TouhouUMContext(CommonContext):
                                 temp_value = self.handler.getLives()
                                 temp_value -= 3
                                 self.handler.setLives(temp_value)
+                                self.handler.setCardUnlockState(MOKOU_CARD, False) 
                     
                     await self.update_locations_checked()
         except Exception as e:
@@ -770,22 +927,56 @@ class TouhouUMContext(CommonContext):
 
         try:
             game_state = -1
+            new_locations = []
+
             currently_in_menu = False
 
             while not self.exit_event.is_set() and self.handler and not self.in_error:
                 await asyncio.sleep(0.5)
 
                 game_state = self.handler.get_game_state()
+
                 if game_state == IN_MENU:
                     # Entered the menu or just connected to the game.
                     if not currently_in_menu:
                         logger.info("Entered main menu")
+                        
+                        new_locations = []
                         self.able_to_check = True
-                        currently_in_menu = True
+                        currently_in_menu = True  
+
+                        # If a card has been received, make it show in the main menu.
+                        for item_card in ITEM_CARDS:
+                            self.handler.setCardUnlockState(item_card, self.handler.hasCardBeenReceived(item_card))
+                                
+                        # We shouldn't check locations until they are all already added to the list.
+                        # That could be some scary read-write issues.
+                        while(self.location_semaphore_in_use):
+                            print("Semaphore in use")
+                            await asyncio.sleep(0.5)
+
+                        # Extra goal check just in-case that it did not properly register.
+                        for id, ending_map in self.location_id_to_ending_mapping.items():
+                            if id not in self.previous_location_checked and self.handler.isGoalCompleted(*ending_map):
+                                self.handler.setGoalCompleted(*ending_map)
+                                new_locations.append(id)
+        
+                        # If we actually found something new then send it.
+                        if new_locations:
+                            logger.info("Missed something it seems")
+                            logger.info(f"{new_locations}")
+                            self.previous_location_checked += new_locations
+                            await self.send_msgs([{"cmd": 'LocationChecks', "locations": new_locations}])
 
                 elif currently_in_menu:
                     logger.info("Left main menu")
                     currently_in_menu = False
+
+                    # Since unlock state is a factor in determining whether you've purchased an item card, disable in stage if not purchased.
+                    for item_card in ITEM_CARDS:
+                        if not self.handler.hasCardBeenPurchased(item_card):
+                            print(f"{item_card} not purcahsed")
+                            self.handler.setCardUnlockState(item_card, 0)
 
         except Exception as e:
             logger.error(f"Main ERROR: {e}")
@@ -817,6 +1008,7 @@ class TouhouUMContext(CommonContext):
 
                 # Wait until the player is actively in a stage they can play fully.
                 if self.checked_if_owns_stage:
+
                     for item_id in self.game_item_queue:
                         match item_id:
                             case 6:
@@ -891,8 +1083,9 @@ class TouhouUMContext(CommonContext):
                             case 509:
                                 print("Trap: You die")
                                 self.handler.killPlayer()
-
-                        self.game_item_queue.remove(item_id)
+                
+                    # Since asyncio only stops the coroutine at await, this won't mess with the list while it is being filled.
+                    self.game_item_queue = []
                     
                     if freeze_timer == 0:
                         self.handler.resetSpeed()
@@ -989,6 +1182,7 @@ async def game_watcher(ctx):
         client_loops.append(asyncio.create_task(ctx.stage_item_loop()))
         # Add more loops later
 
+        # Update any locations made before the connection.
         await ctx.update_locations_checked()
         #TODO: Update Stage List
 
