@@ -1011,7 +1011,7 @@ class TouhouUMContext(CommonContext):
 
                     for item_id in self.game_item_queue:
                         match item_id:
-                            case 6:
+                            case 6: # To delete
                                 print("+50 funds")
                                 self.handler.addFunds(50)
                             case 7:
@@ -1023,7 +1023,7 @@ class TouhouUMContext(CommonContext):
                             case 9:
                                 print("+50 power")
                                 self.handler.addPower(50)
-                            case 10:
+                            case 10: # To delete
                                 print("+75 power")
                                 self.handler.addPower(75)
                             case 11:

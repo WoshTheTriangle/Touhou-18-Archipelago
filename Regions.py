@@ -26,6 +26,7 @@ def generate_regions(world, exclude_lunatic, extra_stage_acquire, split_by_diffi
 
     victory_location = None
     victory_location_name = None
+    blank_and_magatama_location = None
 
     init_region = Region("Menu", world.player, world.multiworld)
     region_list.append(init_region)
@@ -105,8 +106,6 @@ def generate_regions(world, exclude_lunatic, extra_stage_acquire, split_by_diffi
 
     # Beating the game.
     stage_region = Region("Beat The Game", world.player, world.multiworld)
-    stage_region.add_locations(get_location_names_with_ids([f"Unlocked {MAGATAMA_CARD_NAME}"]), TouhouUMLocation)
-    region_list.append(stage_region)
 
     # Victory locations (these are fixed)
     
@@ -116,12 +115,28 @@ def generate_regions(world, exclude_lunatic, extra_stage_acquire, split_by_diffi
         victory_location.place_locked_item(world.create_item(victory_location_name))
 
         stage_region.locations.append(victory_location)
+    region_list.append(stage_region)
 
+    stage_region = Region("Beat The Game [Alternate]", world.player, world.multiworld)
+
+    for character in CHARACTER_NAMES:
         victory_location_name = f"[{character}][Blank Card] Defeated Chimata Ending"
         victory_location = TouhouUMLocation(world.player, victory_location_name, location_table[victory_location_name], stage_region)
         victory_location.place_locked_item(world.create_item(victory_location_name))
 
         stage_region.locations.append(victory_location)
+    region_list.append(stage_region)
+
+    stage_region = init_region
+    # Placing Blank Card and Sky-Blue Magatama in the locations.
+    blank_and_magatama_location = TouhouUMLocation(world.player, f"Unlocked {BLANK_CARD_NAME}", location_table[f"Unlocked {BLANK_CARD_NAME}"], init_region)
+    blank_and_magatama_location.place_locked_item(world.create_item(BLANK_CARD_NAME))
+    stage_region.locations.append(blank_and_magatama_location)
+
+
+    blank_and_magatama_location = TouhouUMLocation(world.player, f"Unlocked {MAGATAMA_CARD_NAME}", location_table[f"Unlocked {MAGATAMA_CARD_NAME}"], init_region)
+    blank_and_magatama_location.place_locked_item(world.create_item(MAGATAMA_CARD_NAME))
+    stage_region.locations.append(blank_and_magatama_location)
 
     return region_list
 
@@ -145,7 +160,7 @@ def connect_regions(world) -> None:
             connecting_region = world.get_region(f"[{character}] Stage {stage}")
             starting_region.connect(connecting_region, f"[{character}] Enter Stage {stage}")
 
-            # Connect current stage to current shop.
+            # Connect current stage to current shop unless on stage 6.
             if stage == 6:
                 starting_region = connecting_region
                 connecting_region = world.get_region("Beat The Game")
@@ -156,6 +171,8 @@ def connect_regions(world) -> None:
             connecting_region = world.get_region(f"Stage {stage} Shop")
 
             starting_region.connect(connecting_region, f"[{character}] Enter Stage {stage} Shop")
+
+            starting_region = connecting_region
 
     # Difficulty connections.
     if split_by_difficulty:
@@ -183,6 +200,12 @@ def connect_regions(world) -> None:
 
                     starting_region.connect(connecting_region, f"[{difficulty}][{character}]Enter Stage {stage} Shop")
 
+                    starting_region = connecting_region
+
+    starting_region = world.get_region("Beat The Game")
+    connecting_region = world.get_region("Beat The Game [Alternate]")
+    starting_region.connect(connecting_region, "Alternate Ending")
+
     # Extra Stage Connections.
     for character in CHARACTER_NAMES:
         starting_region = menu_region
@@ -191,7 +214,7 @@ def connect_regions(world) -> None:
                 connecting_region = world.get_region(f"[{character}] Stage Extra")
                 starting_region.connect(connecting_region, f"[{character}] Enter Stage Extra")
             elif extra_stage_acquire == EXTRA_LINEAR: # Extra connected to beating stage 6
-                starting_region = world.get_region(f"Beat The Game")
+                starting_region = world.get_region("Beat The Game")
                 connecting_region = world.get_region(f"[{character}] Stage Extra")
                 starting_region.connect(connecting_region, f"[{character}] Enter Stage Extra")
 

@@ -125,7 +125,7 @@ def create_all_items(world) -> None:
             continue
             
         # Magatama (and Blank Card) is not automatically in the item pool.
-        if data.code == 353:
+        if data.code == 353 or data.code == 300:
             continue
 
         if data.category == CATEGORY_FILLER or data.category == CATEGORY_TRAP or data.category == CATEGORY_VICTORY:
@@ -164,10 +164,8 @@ item_table: Dict[str, TouhouUMItemData] = {
     "+1 Continue" : TouhouUMItemData(CATEGORY_ITEM, 3, ItemClassification.useful, 5),
     "Lower Difficulty" : TouhouUMItemData(CATEGORY_ITEM, 4, ItemClassification.progression, 3), #maybe useful later idk
     "Extra Starting Card Slot" : TouhouUMItemData(CATEGORY_ITEM, 5, ItemClassification.useful, 2),
-    "+50 Funds" : TouhouUMItemData(CATEGORY_ITEM, 6, ItemClassification.useful, 3),
     "+100 Funds" : TouhouUMItemData(CATEGORY_ITEM, 8, ItemClassification.useful, 3),
     "+50 Power" : TouhouUMItemData(CATEGORY_ITEM, 9, ItemClassification.useful, 3),
-    "+75 Power" : TouhouUMItemData(CATEGORY_ITEM, 10, ItemClassification.useful, 3),
     "+1 Max Life" : TouhouUMItemData(CATEGORY_ITEM, 12, ItemClassification.progression, 0),
     "+1 Max Bomb" : TouhouUMItemData(CATEGORY_ITEM, 13, ItemClassification.progression, 0),
 
@@ -190,6 +188,7 @@ item_table: Dict[str, TouhouUMItemData] = {
     "[Sanae] Extra Stage" : TouhouUMItemData(CATEGORY_STAGE, 209, ItemClassification.progression),
 
     #Ability Cards
+    BLANK_CARD_NAME : TouhouUMItemData(CATEGORY_CARD, 300, ItemClassification.progression),
     SPELL_CARD_NAME : TouhouUMItemData(CATEGORY_CARD, 301, ItemClassification.progression),
     LIFE_CARD_NAME : TouhouUMItemData(CATEGORY_CARD, 302, ItemClassification.progression),
     NAZRIN_CARD_NAME : TouhouUMItemData(CATEGORY_CARD, 303, ItemClassification.progression),
@@ -279,6 +278,8 @@ item_table: Dict[str, TouhouUMItemData] = {
     "[Sanae] Defeated Momoyo" : TouhouUMItemData(CATEGORY_VICTORY, 611, ItemClassification.progression)
 }
 
+item_id_to_name_table: Dict[int, str] = {data.code: name for name, data in item_table.items()}
+
 # Subsets of item_table
 
 filler_table: Dict[str, TouhouUMItemData] = {}
@@ -363,6 +364,8 @@ DURATION_BASED_ITEMS = [500, 501, 502, 508]
 
 GOAL_BASED_ITEMS = [600, 601, 602, 603, 604, 605, 606,
                     607, 608, 609, 610, 611]
+
+CARD_ITEMS_LIST = [i for i in range(301, 353)]
 
 GOAL_CHIMATA_ITEMS = [600, 601, 602, 603]
 GOAL_CHIMATA_BLANK_ITEMS = [604, 605, 606, 607]

@@ -77,6 +77,12 @@ for card in ABILITY_CARD_LIST:
     location_id_to_name[location_offset] = location
     location_offset += 1
 
+# Blank Card
+location = f"Unlocked {BLANK_CARD_NAME}"
+location_table[location] = location_offset
+location_id_to_name[location_offset] = location
+location_offset += 1
+
 # Sky-Blue Magatama
 location = f"Unlocked {MAGATAMA_CARD_NAME}"
 location_table[location] = location_offset

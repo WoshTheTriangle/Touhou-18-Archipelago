@@ -32,7 +32,7 @@ class ExtraStage(Choice):
     How Extra Stage should be included.
     Linear: Extra Stage is acquired as the 7th progressive stage.
     Apart: Extra Stage progressions are normal items to be unlocked.
-    Not Included: Extra Stage progressions and Sky-Blue Magatama are unobtainable and no locations are locked behind Extra Stage.
+    Not Included: Extra Stage progressions are unobtainable and no locations are locked behind Extra Stage.
     """
     display_name = "Include Extra Stage"
 
@@ -89,12 +89,12 @@ class EndingsRequired(Range):
     """
     display_name = "Amount of characters needed to beat goal bosses"
     range_start = 1
-    range_end = 3
+    range_end = 4
     default = 1
 
 class CardsRequired(Range):
     """
-    If Ability Cards was chosen:
+    If Ability Cards or All was chosen:
     The amount of ability cards required to achieve the goal.
     """
     display_name = "Amount of ability cards required to complete the goal"

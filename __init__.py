@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from .WebWorld import TouhouUMWebWorld
 from . import Items, Locations, Regions, Rules, Options as UMOptions
 from .variables.meta_data import *
+from .variables.stage_constants import *
 
 from typing import Any
 
@@ -41,6 +42,15 @@ class TouhouUMWorld(World):
     def generate_early(self) -> None:
         # Giving the player precollected items (player character and maybe some other stuff)
         self.push_precollected(self.create_item("Reimu"))
+
+        # Fix conflicting options
+        if self.options.extra_stage == EXTRA_NOT_INCLUDED:
+            self.options.magatama_req = clamp(0, 51, self.options.magatama_req)
+            self.options.blank_card_req = clamp(0, 51, self.options.blank_card_req)
+            self.options.card_req = clamp(1, 51, self.options.card_req)
+
+            if self.options.goal == GOAL_MOMOYO:
+                self.options.goal = GOAL_CHIMATA
 
     def set_rules(self) -> None:
         Rules.set_all_rules(self)
