@@ -6,7 +6,7 @@ from .variables.card_constants import *
 def create_and_connect_regions(world) -> None:
     create_regions(world)
     connect_regions(world)
-    create_events(world)
+    #create_events(world)
 
 def create_events(world) -> None:
     print("h")
@@ -62,7 +62,7 @@ def generate_regions(world, exclude_lunatic, extra_stage_acquire, split_by_diffi
                 stage_region.add_locations(get_location_names_with_ids([f"[{character}] Stage {stage} Clear"]), TouhouUMLocation)
                     
                 region_list.append(stage_region)
-    else:
+    elif split_by_difficulty:
         for stage in range(1, 7):
             for character in CHARACTER_NAMES:
 
@@ -89,19 +89,16 @@ def generate_regions(world, exclude_lunatic, extra_stage_acquire, split_by_diffi
                                         for check in STAGE_CHECKS[6]]), TouhouUMLocation)
             stage_region.add_locations(get_location_names_with_ids([f"[{character}] Stage Extra Clear"]), TouhouUMLocation)
 
+            # Victory location (fixed items) for defeating Momoyo
+            victory_location_name = f"[{character}] Defeated Momoyo"
+            victory_location = TouhouUMLocation(world.player, victory_location_name, location_table[victory_location_name], stage_region)
+            victory_location.place_locked_item(world.create_item(victory_location_name))
+            stage_region.locations.append(victory_location)
+
             region_list.append(stage_region)
 
         stage_region = Region("Extra Stage Clear", world.player, world.multiworld)
         stage_region.add_locations(get_location_names_with_ids([f"Purchased {MOMOYO_CARD_NAME}"]), TouhouUMLocation)
-
-        # Victory location (fixed items) for defeating Momoyo
-        for character in CHARACTER_NAMES:
-            victory_location_name = f"[{character}] Defeated Momoyo"
-            victory_location = TouhouUMLocation(world.player, victory_location_name, location_table[victory_location_name], stage_region)
-            victory_location.place_locked_item(world.create_item(victory_location_name))
-
-            stage_region.locations.append(victory_location)
-
         region_list.append(stage_region)
 
     # Beating the game.
@@ -151,7 +148,8 @@ def connect_regions(world) -> None:
     starting_region = menu_region
     connecting_region = None
 
-    # Stage and shop connections.
+    # Stage and shop connections. Not split by difficulty.
+    
     for character in CHARACTER_NAMES:
         starting_region = menu_region
         for stage in range(1, 7):
@@ -162,8 +160,10 @@ def connect_regions(world) -> None:
 
             # Connect current stage to current shop unless on stage 6.
             if stage == 6:
+
                 starting_region = connecting_region
                 connecting_region = world.get_region("Beat The Game")
+
                 starting_region.connect(connecting_region, f"[{character}] Completed the Game")
                 continue
 
@@ -173,6 +173,9 @@ def connect_regions(world) -> None:
             starting_region.connect(connecting_region, f"[{character}] Enter Stage {stage} Shop")
 
             starting_region = connecting_region
+
+    # stage_region = Region(f"[{character}] Stage {stage}", world.player, world.multiworld)
+    # stage_region.add_locations(get_location_names_with_ids([f"[{character}] Stage {stage} Clear"]), TouhouUMLocation)
 
     # Difficulty connections.
     if split_by_difficulty:

@@ -4,7 +4,7 @@ from .Items import *
 from .variables.card_constants import *
 from .Options import *
 
-from rule_builder.rules import Has, HasAll, HasAny, HasFromListUnique, Rule
+from rule_builder.rules import Has, HasAll, HasAny, HasFromListUnique, Rule, True_, False_
 from rule_builder.options import OptionFilter
 
 
@@ -20,8 +20,8 @@ def set_all_entrance_rules(world) -> None:
     global_unlock_rule = None
     per_character_unlock_rule = None
 
-    global_stage_unlock = OptionFilter(StageUnlock, 0)
-    per_character_unlock = OptionFilter(StageUnlock, 2)
+    global_stage_unlock = True_() if world.options.stage_unlock == 0 else False_()
+    per_character_unlock = True_() if world.options.stage_unlock == 2 else False_()
 
     difficulty_toggle = world.options.difficulty_check
     exclude_lunatic = world.options.exclude_lunatic
@@ -30,35 +30,66 @@ def set_all_entrance_rules(world) -> None:
     lower_difficulty_index = 0
 
     entrance_name = None
+    print(difficulty_toggle)
 
     # Non-difficulty check stages
     if not difficulty_toggle:
+        print("not difficult")
         for character in CHARACTER_NAMES:
             for stage in range(1, 7):
-                global_unlock_rule = (Has("Next Stage", count = stage - 1) & global_stage_unlock)
-                per_character_unlock_rule = (Has(f"[{character}] Next Stage", count = stage - 1) & per_character_unlock)
+                print(stage - 1)
+                if stage != 1:
+                    global_unlock_rule = Has("Next Stage", count = stage - 1) & global_stage_unlock
+                    per_character_unlock_rule = Has(f"[{character}] Next Stage", count = stage - 1) & per_character_unlock
+                else:
+                    global_unlock_rule = True_()
+                    per_character_unlock_rule = True_()
 
                 stage_rule = Has(character) & (global_unlock_rule | per_character_unlock_rule)
 
                 entrance_name = world.get_entrance(f"[{character}] Enter Stage {stage}")
+                print(stage_rule)
                 world.set_rule(entrance_name, stage_rule)
-
+    
     # TODO: I don't think not including the lower difficulty check will matter but I will keep it in mind incase it does.
     # This is basically just a future note to myself.
 
     if difficulty_toggle:
+        print("difficult")
         for character in CHARACTER_NAMES:
             lower_difficulty_index = 0
             for difficulty in reversed(DIFFICULTY_NAMES):
                 if exclude_lunatic and difficulty == "Lunatic": continue
-
                 for stage in range(1, 7):
-                    global_unlock_rule = (Has("Next Stage", count = stage - 1) & global_stage_unlock)
-                    per_character_unlock_rule = (Has(f"[{character}] Next Stage", count = stage - 1) & per_character_unlock)
 
-                    stage_rule = Has(character) & Has("Lower Difficulty", count = lower_difficulty_index) & (global_unlock_rule | per_character_unlock_rule)
+                    # Accessing Each Stage. This is for the Stage Clear Location Checks
+                    if lower_difficulty_index == 0:
+                        entrance_name = world.get_entrance(f"[{character}] Enter Stage {stage}")
+                        
+                        global_unlock_rule = Has("Next Stage", count = stage - 1) & global_stage_unlock
+                        per_character_unlock_rule = Has(f"[{character}] Next Stage", count = stage - 1) & per_character_unlock
+
+                        stage_rule = Has(character) & (global_unlock_rule | per_character_unlock_rule)
+                        
+                        world.set_rule(entrance_name, stage_rule)
+
+                    # The rest is for specific difficulties to include Stage Difficulty-based Location Checks
+                    if stage != 1:
+                        global_unlock_rule = Has("Next Stage", count = stage - 1) & global_stage_unlock
+                        per_character_unlock_rule = Has(f"[{character}] Next Stage", count = stage - 1) & per_character_unlock
+                    else:
+                        global_unlock_rule = True_()
+                        per_character_unlock_rule = True_()
+                    
+                    if lower_difficulty_index != 0:
+                        lower_difficulty_rule = Has("Lower Difficulty", count = lower_difficulty_index)
+                    else:
+                        lower_difficulty_rule = True_()
+
+                    stage_rule = Has(character) & lower_difficulty_rule & (global_unlock_rule | per_character_unlock_rule)
 
                     entrance_name = world.get_entrance(f"[{difficulty}][{character}] Enter Stage {stage}")
+
                     world.set_rule(entrance_name, stage_rule)
                 lower_difficulty_index += 1
 
@@ -69,19 +100,22 @@ def set_all_entrance_rules(world) -> None:
     if extra_stage != EXTRA_NOT_INCLUDED:
         if extra_stage == EXTRA_APART:
             for character in CHARACTER_NAMES:
-                global_unlock_rule = (Has("Extra Stage") & global_stage_unlock)
-                per_character_unlock_rule = (Has(f"[{character}] Extra Stage") & per_character_unlock)
+                global_unlock_rule = Has("Extra Stage") & global_stage_unlock
+                per_character_unlock_rule = Has(f"[{character}] Extra Stage") & per_character_unlock
                 stage_rule = Has(character) & Has(MAGATAMA_CARD_NAME) & (global_unlock_rule | per_character_unlock_rule)
 
                 entrance_name = world.get_entrance(f"[{character}] Enter Stage Extra")
                 world.set_rule(entrance_name, stage_rule)
         elif extra_stage == EXTRA_LINEAR:
-            global_unlock_rule = (Has("Next Stage", count = 6) & global_stage_unlock)
-            per_character_unlock_rule = (Has(f"[{character}] Next Stage", count = 6) & per_character_unlock)
-            stage_rule = Has(character) & Has(MAGATAMA_CARD_NAME) & (global_unlock_rule | per_character_unlock_rule)
+            for character in CHARACTER_NAMES:
+                global_unlock_rule = Has("Next Stage", count = 6) & global_stage_unlock
+                per_character_unlock_rule = Has(f"[{character}] Next Stage", count = 6) & per_character_unlock
+                stage_rule = Has(character) & Has(MAGATAMA_CARD_NAME) & (global_unlock_rule | per_character_unlock_rule)
 
-            entrance_name = world.get_entrance(f"[{character}] Enter Stage Extra")
-            world.set_rule(entrance_name, stage_rule)
+                entrance_name = world.get_entrance(f"[{character}] Enter Stage Extra")
+
+                world.set_rule(entrance_name, stage_rule)
+
 
 def set_all_location_rules(world) -> None:
     # Setting the rules for the Sky-Blue Magatama and Blank Card
