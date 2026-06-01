@@ -464,7 +464,8 @@ class TouhouUMContext(CommonContext):
                     print("lower difficulty")
                 case 5:
                     self.handler.addCardSlots()
-                    print("card slot +1")
+                    print("card slot +1") 
+                    self.handler.setCardSlotCount(self.handler.getHandlerCardSlotCount())
                 case 12:
                     self.handler.addMaxLives()
                     print("+1 max life")
@@ -708,6 +709,7 @@ class TouhouUMContext(CommonContext):
                         if False: #TODO add state to see impossible stuff
                             self.able_to_check = False
 
+                    # This specific block is for if the player restarts the game or uses a continue.
                     if not given_resources:
                         await asyncio.sleep(0.5)
                         
@@ -728,23 +730,28 @@ class TouhouUMContext(CommonContext):
                             
                             # If the current stage is not unlocked, send the player back.
                             if not self.handler.isStageUnlocked(current_character, current_stage):
-                                print("get outta here")
                                 self.handler.forceToMainMenu()
                                 self.checked_if_owns_stage = False
+                                continue
 
+                            # Player snuck in with a character they don't own.
+                            if not self.handler.isCharacterUnlocked(current_character):
+                                logger.info("Error: Current character is not unlocked. Going back to Main Menu")
+                                self.handler.forceToMainMenu()
+                                self.checked_if_owns_stage = False
                                 continue
 
                     if current_score <= self.handler.getScore() or current_continue > self.handler.getContinues():
                         # Player's score could have lowered due to using a continue.
                         current_score = self.handler.getScore()
                         current_continue = self.handler.getContinues()
+                        given_resources = False
+
                     else:
                         # Player has restarted the game.
-                        logger.info("Restarted the game")
                         currently_in_stage = False
                         given_resources = False
                         continue
-                    # Check score for that.
 
                     # Check for if a boss appeared.
                     if not boss_present:
@@ -760,7 +767,7 @@ class TouhouUMContext(CommonContext):
                                     await self.update_locations_checked()
                                 boss_present = False
 
-                    # Did the player die?
+                    # Did the player's lives change.
                     new_lives = self.handler.getLives()
                     if current_lives != new_lives:
                         if new_lives > self.handler.max_lives:
@@ -926,7 +933,20 @@ class TouhouUMContext(CommonContext):
         print("Menu Loop Init")
 
         try:
+            DIFFICULTY_SELECT = 5
+            CHARACTER_SELECT = 6
+
             game_state = -1
+            menu_select_state = None
+            selected_difficulty = None
+            default_difficulty = DIFFICULTY_LUNATIC if not self.options["exclude_lunatic"] else DIFFICULTY_HARD
+
+            previous_character = 0
+            current_character = None
+
+            previous_difficulty = DIFFICULTY_LUNATIC if not self.options["exclude_lunatic"] else DIFFICULTY_HARD
+            current_difficulty = None
+
             new_locations = []
 
             currently_in_menu = False
@@ -940,7 +960,7 @@ class TouhouUMContext(CommonContext):
                     # Entered the menu or just connected to the game.
                     if not currently_in_menu:
                         logger.info("Entered main menu")
-                        
+
                         new_locations = []
                         self.able_to_check = True
                         currently_in_menu = True  
@@ -948,7 +968,10 @@ class TouhouUMContext(CommonContext):
                         # If a card has been received, make it show in the main menu.
                         for item_card in ITEM_CARDS:
                             self.handler.setCardUnlockState(item_card, self.handler.hasCardBeenReceived(item_card))
-                                
+
+                        '''
+                        Additional Location Check upon entering the menu.
+                        '''   
                         # We shouldn't check locations until they are all already added to the list.
                         # That could be some scary read-write issues.
                         while(self.location_semaphore_in_use):
@@ -967,6 +990,32 @@ class TouhouUMContext(CommonContext):
                             logger.info(f"{new_locations}")
                             self.previous_location_checked += new_locations
                             await self.send_msgs([{"cmd": 'LocationChecks', "locations": new_locations}])
+
+                    # General Main Menu Stuff.
+                    menu_select_state = self.handler.getMainMenuSelectArea()
+                    if menu_select_state == CHARACTER_SELECT:
+                        selected_difficulty = self.handler.getDifficulty()
+
+                        # Selected a character who has not been unlocked yet.
+                        current_character = self.handler.getMainMenuSelect()
+                        if not self.handler.isCharacterUnlocked(current_character):
+                            self.handler.setMainMenuSelect(previous_character)
+                            current_character = previous_character
+
+                        previous_character = current_character
+
+                        # Player entered a difficulty they do not have access to, fix it.
+                        if not self.handler.isDifficultyUnlocked(selected_difficulty):
+                            logger.info(f"""Error: Entered locked difficulty option. Defaulting to 
+                                        {DIFFICULTY_NAMES[default_difficulty]}""")
+                            self.handler.setDifficulty(default_difficulty) 
+                    elif menu_select_state == DIFFICULTY_SELECT:
+                        current_difficulty = self.handler.getMainMenuSelect()
+
+                        if not self.handler.isDifficultyUnlocked(current_difficulty):
+                            self.handler.setMainMenuSelect(previous_difficulty)
+                            current_difficulty = previous_difficulty
+                        previous_difficulty = current_difficulty
 
                 elif currently_in_menu:
                     logger.info("Left main menu")
@@ -1183,6 +1232,7 @@ async def game_watcher(ctx):
         # Add more loops later
 
         # Update any locations made before the connection.
+
         await ctx.update_locations_checked()
         #TODO: Update Stage List
 

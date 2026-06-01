@@ -33,6 +33,7 @@ class ExtraStage(Choice):
     Linear: Extra Stage is acquired as the 7th progressive stage.
     Apart: Extra Stage progressions are normal items to be unlocked.
     Not Included: Extra Stage progressions are unobtainable and no locations are locked behind Extra Stage.
+                  This also removes Gluttenous Centipede from the item pool, making all card ranges have an end of 51.
     """
     display_name = "Include Extra Stage"
 
@@ -72,6 +73,7 @@ class Goal(Choice):
                    If Extra Stage is not included,  it will default to defeating Chimata.
     Chimata Blank Card Ending: Defeating Chimata Tenkyuu with the Blank Card (Complete Stage 6 with Blank Card).
     Ability Cards: Acquire a certain number of ability cards.
+                   Blank Card and Sky-Blue Magatama are not counted towards this number.
     """
     display_name = "Goal"
 

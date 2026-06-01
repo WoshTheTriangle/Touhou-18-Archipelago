@@ -44,7 +44,6 @@ class GameHandler:
         self.reset()
         self.init_game()
 
-
     def reconnect(self):
         self.gameController = GameController()
         self.init_game(self)
@@ -56,8 +55,8 @@ class GameHandler:
 
         for i in range(30):
             self.setAchievementState(i, False)
-
-        # TODO set card slots unlocked to 1
+        
+        self.setCardSlotCount(1)
 
     def reset(self) -> None:
 
@@ -96,7 +95,7 @@ class GameHandler:
 
         self.difficultiesUnlocked = [False, False, False, True, False]
 
-        # No cards unlocked so far.
+        # No cards ed so far.
         self.cardsPurchased = [False] * 56
         self.cardsUnlocked = [False] * 56
 
@@ -212,10 +211,25 @@ class GameHandler:
                 if difficultiesUnlocked[DIFFICULTY_HARD] and current_difficulty >= 2:
                     self.bossesBeaten[current_character][HARD][self.gameController.getStage() - 1][counter] = True
     
+    '''
+    Main Menu Stuff
+    '''
+    def getMainMenuSelectArea(self) -> int:
+        return self.gameController.getMainMenuSelectArea()
+
+    # Select state in main menu (e.g., character currently being chosen).
+    def getMainMenuSelect(self) -> int:
+        return self.gameController.getMainMenuSelect()
+
+    def setMainMenuSelect(self, value: int) -> None:
+        value = clamp(0, 3, value)
+        return self.gameController.setMainMenuSelect(value)
+
     # Force the player back to the main menu from anywhere.
     def forceToMainMenu(self) -> None:
         print("Force A")
         self.gameController.force_to_main_menu()
+
 
     '''
     General Getters and Setters
@@ -258,7 +272,6 @@ class GameHandler:
         return self.gameController.getBombs()
 
     def setBombs(self, value: int) -> None:
-        print(value)
         self.gameController.setBombs(clamp(0, 8, value))
 
     def getLifeFrags(self) -> int:
@@ -281,6 +294,12 @@ class GameHandler:
 
     def getDifficulty(self) -> int:
         return self.gameController.getDifficulty()
+
+    # This is a guardrail in the main menu.
+    # Using this outside of the main menu is a really bad idea.
+    def setDifficulty(self, value) -> None:
+        value = clamp(0, 3, value)
+        self.gameController.setDifficulty(value)
 
     def setSpeed(self, new_speeds: list[int]) -> None:
         self.gameController.setSpeed(new_speeds)
@@ -314,6 +333,10 @@ class GameHandler:
         new_val = 0
         if new_state: new_val = 1
         self.gameController.setAchievementState(id, new_val)
+
+    def setCardSlotCount(self, value: int) -> None:
+        value = clamp(0, 32, value)
+        self.gameController.setCardSlotCount(value)
 
     '''
     Helper Functions
@@ -418,6 +441,15 @@ class GameHandler:
 
     def isStageUnlocked(self, character: int, stage_num: int) -> bool:
         return self.stagesUnlocked[character][stage_num]
+
+    def isDifficultyUnlocked(self, difficulty: int) -> bool:
+        return self.difficultiesUnlocked[difficulty]
+
+    def isCharacterUnlocked(self, character: int) -> bool:
+        return self.charactersUnlocked[character]
+
+    def getHandlerCardSlotCount(self) -> int:
+        return self.cardSlots
 
     '''
     Shop Settings

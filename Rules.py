@@ -30,14 +30,11 @@ def set_all_entrance_rules(world) -> None:
     lower_difficulty_index = 0
 
     entrance_name = None
-    print(difficulty_toggle)
 
     # Non-difficulty check stages
     if not difficulty_toggle:
-        print("not difficult")
         for character in CHARACTER_NAMES:
             for stage in range(1, 7):
-                print(stage - 1)
                 if stage != 1:
                     global_unlock_rule = Has("Next Stage", count = stage - 1) & global_stage_unlock
                     per_character_unlock_rule = Has(f"[{character}] Next Stage", count = stage - 1) & per_character_unlock
@@ -48,14 +45,12 @@ def set_all_entrance_rules(world) -> None:
                 stage_rule = Has(character) & (global_unlock_rule | per_character_unlock_rule)
 
                 entrance_name = world.get_entrance(f"[{character}] Enter Stage {stage}")
-                print(stage_rule)
                 world.set_rule(entrance_name, stage_rule)
     
     # TODO: I don't think not including the lower difficulty check will matter but I will keep it in mind incase it does.
     # This is basically just a future note to myself.
 
     if difficulty_toggle:
-        print("difficult")
         for character in CHARACTER_NAMES:
             lower_difficulty_index = 0
             for difficulty in reversed(DIFFICULTY_NAMES):

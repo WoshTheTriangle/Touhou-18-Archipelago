@@ -88,6 +88,9 @@ class GameController:
     def getDifficulty(self) -> int:
         return self.pm.read_int(self.addrDifficulty)
 
+    def setDifficulty(self, value: int) -> None:
+        self.pm.write_int(self.addrDifficulty, value)
+
     def getPower(self) -> int:
         return self.pm.read_int(self.addrPower)
 
@@ -121,17 +124,27 @@ class GameController:
     '''
 
     def in_main_menu(self) -> bool:
-        address = self.pm.base_address + ADDR_MAIN_MENU_PTR
-        if self.pm.read_int(address) == 0:
+        if self.pm.read_int(self.mainMenuPtr) == 0:
             return False
         return True
+
+    def getMainMenuSelect(self) -> int:
+        address = getPointerAddress(self.pm, self.mainMenuPtr, ADDR_MENU_SELECT)
+        return self.pm.read_int(address)
+
+    def setMainMenuSelect(self, value: int) -> None:
+        address = getPointerAddress(self.pm, self.mainMenuPtr, ADDR_MENU_SELECT)
+        self.pm.write_int(address, value)
+
+    def getMainMenuSelectArea(self) -> int:
+        address = getPointerAddress(self.pm, self.mainMenuPtr, ADDR_MENU_LOCATION_OFFSET)
+        return self.pm.read_int(address)
 
     def check_if_in_game(self) -> bool: #TODO, make it actually anywhere
         # Technically this only returns true if you are in the main menu,
         # but it would also be really inconvenient if the player connected anywhere
         # else so this will work just fine.
-        address = self.pm.base_address + ADDR_MAIN_MENU_PTR
-        if self.pm.read_int(address) == 0:
+        if self.pm.read_int(self.mainMenuPtr) == 0:
             return False
         return True
 
@@ -139,6 +152,15 @@ class GameController:
     def force_to_main_menu(self) -> None:
         print("Force B")
         self.pm.write_int(self.menuStatePtr, 4)
+
+    def getCardSlotCount(self) -> int:
+        address = getPointerAddress(self.pm, self.scorefilePtr, ADDR_CARD_SLOTS_OFFSET)
+        return self.pm.read_int(address)
+
+    def setCardSlotCount(self, value: int) -> None:
+        print("1")
+        address = getPointerAddress(self.pm, self.scorefilePtr, ADDR_CARD_SLOTS_OFFSET)
+        self.pm.write_int(address, value)
 
     '''
     Stage and Card Info
