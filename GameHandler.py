@@ -266,13 +266,17 @@ class GameHandler:
         return self.gameController.getLives()
 
     def setLives(self, value) -> None:
-        self.gameController.setLives(clamp(0, 8, value))
+        self.gameController.setLives(clamp(0, 7, value))
+
+        self.updateLivesGUI()
 
     def getBombs(self) -> int:
         return self.gameController.getBombs()
 
     def setBombs(self, value: int) -> None:
-        self.gameController.setBombs(clamp(0, 8, value))
+        self.gameController.setBombs(clamp(0, 7, value))
+
+        self.updateBombsGUI()
 
     def getLifeFrags(self) -> int:
         return self.gameController.getLifeFrags()
@@ -415,6 +419,25 @@ class GameHandler:
 
     def killPlayer(self) -> None:
         self.gameController.setPlayerState(4)
+
+    def updateLivesGUI(self) -> None:
+        lives = self.gameController.getLives()
+        for i in range(7):
+            if i < lives:
+                self.gameController.setGuiState(6 - i, True, True)
+            else:
+                self.gameController.setGuiState(6 - i, True, False)
+
+    def updateBombsGUI(self) -> None:
+        bombs = self.gameController.getBombs()
+        for i in range(7):
+            if i < bombs:
+                self.gameController.setGuiState(6 - i, False, True)
+            else:
+                self.gameController.setGuiState(6 - i, False, False)
+
+    def guiExists(self) -> bool:
+        return self.gameController.guiExists()
 
     '''
     Managing GameHandler variables

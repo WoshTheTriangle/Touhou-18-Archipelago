@@ -37,14 +37,11 @@ class GameController:
         self.enemyManagerPtr = self.pm.base_address + ADDR_ENEMY_MANAGER_PTR
         
         self.playerPtr = self.pm.base_address + ADDR_PLAYER_PTR
-
         self.mainMenuPtr = self.pm.base_address + ADDR_MAIN_MENU_PTR
-        
         self.scorefilePtr = self.pm.base_address + ADDR_SCOREFILE_PTR
-
         self.menuStatePtr = self.pm.base_address + ADDR_MENU_STATE
+        self.guiPtr = self.pm.base_address + ADDR_GUI_PTR
         
-
 
     '''
     Statics
@@ -102,7 +99,7 @@ class GameController:
 
     # The only real state of importance is 4 since that kills the player.
     def setPlayerState(self, value: int) -> None:
-        address = getPointerAddress(self.pm, self.ADDR_PLAYER_PTR, ADDR_PLAYER_STATE_OFFSET)
+        address = getPointerAddress(self.pm, self.playerPtr, ADDR_PLAYER_STATE_OFFSET)
         self.pm.write_int(address, value)
 
     # Return values follow the character constants in stage_constants.py
@@ -118,6 +115,25 @@ class GameController:
 
     def setContinues(self, value: int) -> None:
         self.pm.write_int(self.addrContinues, value)
+
+    # Sets the gui element for lives or bombs to on or off.
+    # TODO fix this because it is being weird
+    def setGuiState(self, gui_id: int, life: bool, new_state: bool) -> None:
+        new_val = GUI_ACTIVE if new_state else GUI_UNACTIVE
+        gui_id *= 4
+        life_bomb_base = ADDR_LIFE_GUI_ELEMENT_OFFSET_HEAD if life else ADDR_BOMB_GUI_ELEMENT_OFFSET_HEAD
+        address = getPointerAddress(self.pm, self.guiPtr, [life_bomb_base + gui_id, ADDR_GUI_STATE_OFFSET])
+        
+        #print(f"{gui_id/4} = {hex(address)}")
+        self.pm.write_int(address, new_val)
+
+    def guiExists(self) -> bool:
+        gui_address = self.pm.read_int(self.guiPtr)
+        if gui_address == 0:
+            return False
+        
+        gui_values = self.pm.read_int(gui_address + ADDR_LIFE_GUI_ELEMENT_OFFSET_HEAD)
+        return gui_values != 0
 
     '''
     Main Menu Info
@@ -150,7 +166,7 @@ class GameController:
 
     # Will force the player back into the main menu when in-stage.
     def force_to_main_menu(self) -> None:
-        print("Force B")
+        #print("Force B")
         self.pm.write_int(self.menuStatePtr, 4)
 
     def getCardSlotCount(self) -> int:
@@ -158,7 +174,6 @@ class GameController:
         return self.pm.read_int(address)
 
     def setCardSlotCount(self, value: int) -> None:
-        print("1")
         address = getPointerAddress(self.pm, self.scorefilePtr, ADDR_CARD_SLOTS_OFFSET)
         self.pm.write_int(address, value)
 

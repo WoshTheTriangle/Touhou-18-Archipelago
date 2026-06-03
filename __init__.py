@@ -4,7 +4,7 @@ from worlds.LauncherComponents import Component, components, launch_subprocess, 
 from collections.abc import Mapping
 
 from .WebWorld import TouhouUMWebWorld
-from . import Items, Locations, Regions, Rules, Options as UMOptions
+from . import Items, Locations, Regions, Rules, UMOptions
 from .variables.meta_data import *
 from .variables.stage_constants import *
 
@@ -51,6 +51,9 @@ class TouhouUMWorld(World):
 
             if self.options.goal == GOAL_MOMOYO:
                 self.options.goal = GOAL_CHIMATA
+
+        if self.options.exclude_lunatic:
+            self.push_precollected(self.create_item("Lower Difficulty"))
 
     def set_rules(self) -> None:
         Rules.set_all_rules(self)

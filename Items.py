@@ -57,35 +57,30 @@ def create_all_items(world) -> None:
 
         # Less Difficulty Options
         if data.code == 4 and world.options.exclude_lunatic:
-            #print("EXCLUDE LUNATIC")
             for i in range(3):
                 item_pool.append(world.create_item(item))
             continue
 
         # Amount of progressive lives if there is a max limit without items increasing the cap.
         if data.code == 1 and not world.options.max_life_item:
-            #print("PROGRESSIVE LIVES")
             for i in range(world.options.init_max_lives):
                 item_pool.append(world.create_item(item))
             continue
         
         # Amount of progressive bombs if there is a max limit without items increasing the cap.
         if data.code == 2 and not world.options.max_bomb_item:
-            #print("PROGRESSIVE BOMBS")
             for i in range(world.options.init_max_bombs):
                 item_pool.append(world.create_item(item))
             continue
 
         # Adding max lives
         if data.code == 12 and world.options.max_life_item:
-            #print("MAX LIVES")
             for i in range(8 - world.options.init_max_lives):
                 item_pool.append(world.create_item(item))
             continue
             
         # Adding max bombs.
         if data.code == 13 and world.options.max_bomb_item:
-            #print("MAX BOMBS")
             for i in range(8 - world.options.init_max_bombs):
                 item_pool.append(world.create_item(item))
             continue
@@ -94,34 +89,28 @@ def create_all_items(world) -> None:
         if data.code == 200 and world.options.stage_unlock == STAGE_GLOBAL:
             # Extra stage is an additional linear next stage.
             if world.options.extra_stage == EXTRA_LINEAR:
-                #print("EXTRA IS LINEAR")
                 for i in range(data.max_quantity + 1):
                     item_pool.append(world.create_item(item))
                 continue
         elif data.code == 200 and world.options.stage_unlock != STAGE_GLOBAL:
-            #print("NOT GLOBAL")
             continue
 
         # Global Character Extra Unlock
         if data.code == 205 and (world.options.stage_unlock != STAGE_GLOBAL or world.options.extra_stage != EXTRA_APART):
-            #print("EXTRA IS NOT GLOBAL AND IS LINEAR")
             continue
 
         # Per Character Stage Unlocks.
         if (data.code >= 201 and data.code <= 204) and world.options.stage_unlock == STAGE_PER_CHARACTER:
             # Extra stage is an additional linear next stage.
             if world.options.extra_stage == EXTRA_LINEAR:
-                #print("EXTRA IS PER CHARACTER LINEAR")
                 for i in range(data.max_quantity + 1):
                     item_pool.append(world.create_item(item))
                 continue
         elif (data.code >= 201 and data.code <= 204) and world.options.stage_unlock != STAGE_PER_CHARACTER:
-            #print("EXTRA IS GLOBAL AND ")
             continue
 
         # Per Character Extra Unlock
         if (data.code >= 206 and data.code <= 209) and (world.options.stage_unlock != STAGE_PER_CHARACTER or world.options.extra_stage != EXTRA_APART):
-            #print("EXTRA IS GLOBAL AND LINEAR")
             continue
             
         # Magatama (and Blank Card) is not automatically in the item pool.
@@ -129,7 +118,6 @@ def create_all_items(world) -> None:
             continue
 
         if data.category == CATEGORY_FILLER or data.category == CATEGORY_TRAP or data.category == CATEGORY_VICTORY:
-            #print("FILLER")
             continue
 
         # Normal item which can be treated normally.

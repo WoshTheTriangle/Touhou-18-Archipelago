@@ -2,7 +2,7 @@ from BaseClasses import CollectionState
 from worlds.generic.Rules import add_rule, set_rule
 from .Items import *
 from .variables.card_constants import *
-from .Options import *
+from .UMOptions import *
 
 from rule_builder.rules import Has, HasAll, HasAny, HasFromListUnique, Rule, True_, False_
 from rule_builder.options import OptionFilter
