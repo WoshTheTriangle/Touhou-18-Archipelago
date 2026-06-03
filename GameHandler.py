@@ -86,8 +86,6 @@ class GameHandler:
             self.altEndingCompleted[character] = False
             self.extraCompleted[character] = False
 
-        print(self.endingCompleted) #TODO
-
         self.charactersUnlocked[CHARACTER_REIMU] = False
         self.charactersUnlocked[CHARACTER_MARISA] = False
         self.charactersUnlocked[CHARACTER_SAKUYA] = False
@@ -250,6 +248,9 @@ class GameHandler:
     def getScore(self) -> int:
         return self.gameController.getScore()
 
+    def setScore(self, value: int) -> None:
+        self.gameController.setScore(value)
+
     def getFunds(self) -> int:
         return self.gameController.getFunds()
 
@@ -341,6 +342,9 @@ class GameHandler:
     def setCardSlotCount(self, value: int) -> None:
         value = clamp(0, 32, value)
         self.gameController.setCardSlotCount(value)
+
+    def getPlayerState(self) -> int:
+        return self.gameController.getPlayerState()
 
     '''
     Helper Functions

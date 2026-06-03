@@ -52,6 +52,9 @@ class GameController:
     def getScore(self) -> int:
         return self.pm.read_int(self.addrScore)
 
+    def setScore(self, value: int) -> None:
+        return self.pm.write_int(self.addrScore, value)
+
     def getLives(self) -> int:
         return self.pm.read_int(self.addrLives)
 
@@ -97,6 +100,16 @@ class GameController:
     def getTimeInStage(self) -> int:
         return self.pm.read_int(self.addrTimeInStage)
 
+    # States:
+    # 0 - Not present
+    # 1 - Normal
+    # 2 - Spawning in (coming up from the bottom)
+    # 3 - Invincible and unable to move
+    # 4 - Dead
+    def getPlayerState(self) -> int:
+        address = getPointerAddress(self.pm, self.playerPtr, ADDR_PLAYER_STATE_OFFSET)
+        return self.pm.read_int(address)
+
     # The only real state of importance is 4 since that kills the player.
     def setPlayerState(self, value: int) -> None:
         address = getPointerAddress(self.pm, self.playerPtr, ADDR_PLAYER_STATE_OFFSET)
@@ -117,7 +130,6 @@ class GameController:
         self.pm.write_int(self.addrContinues, value)
 
     # Sets the gui element for lives or bombs to on or off.
-    # TODO fix this because it is being weird
     def setGuiState(self, gui_id: int, life: bool, new_state: bool) -> None:
         new_val = GUI_ACTIVE if new_state else GUI_UNACTIVE
         gui_id *= 4

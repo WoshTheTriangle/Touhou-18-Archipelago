@@ -40,7 +40,99 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
 
         return changed
 
+    def _cmd_deathlink(self, new_state: str = None) -> None:
+        """
+        Toggle DeathLink on or off.
+        If no arguments are given, will respond with current deathlink status.
+        :param active: If "on" or "true", enable DeathLink. If "off" or "false", disable DeathLink.
+        """
+        changed = False
 
+        if not self.ctx.is_connected:
+            logger.info("Not connected to the server.")
+            return
+
+        if new_state != None:
+            if new_state.lower() in ["on", "true"]:  
+                logger.info("DeathLink Enabled")
+                if "DeathLink" not in self.ctx.tags:
+                    self.ctx.tags.add("DeathLink")
+                    self.ctx.deathlink_enabled = True
+                    changed = True
+            elif new_state.lower() in ["off", "false"]:
+                if "DeathLink" in self.ctx.tags:
+                    self.ctx.tags.remove("DeathLink")
+                    self.ctx.deathlink_enabled = False
+                    changed = True
+                logger.info("DeathLink Disabled")
+            else:
+                logger.info("Invalid argument, use 'on' or 'off'")
+
+            if changed:
+                asyncio.create_task(self.ctx.send_msgs([{"cmd": "ConnectUpdate", "tags": self.ctx.tags}]))
+            return
+
+        logger.info(f"Deathlink status: {self.ctx.deathlink_enabled}")
+        if not self.ctx.deathlink_enabled: return
+
+        if self.ctx.deathlink_trigger == DEATHLINK_TRIGGER_LIFE:
+            logger.info("DeathLink on Life Loss")
+        elif self.ctx.deathlink_trigger == DEATHLINK_TRIGGER_GAMEOVER:
+            logger.info("DeathLink on Game Over")
+
+    def _cmd_deathlink_trigger(self, trigger: str = None) -> None:
+        """
+        Get or set when a Death Link is triggered. Leave blank to check status.
+        :param trigger: Upon Life Loss ("life"), Upon Game Over ("game_over").
+        """
+        if not self.ctx.is_connected:
+            logger.info("Not connected to the server.")
+            return
+
+        if not self.ctx.deathlink_enabled:
+            logger.info("Deathlink is not enabled.")
+            return
+
+        if trigger is None:
+            if self.ctx.deathlink_trigger == DEATHLINK_TRIGGER_LIFE:
+                logger.info("Deathlink on Life Loss")
+            elif self.deathlink_trigger == DEATHLINK_TRIGGER_GAMEOVER:
+                logger.info("Deathlink on Game Over")
+            else:
+                logger.info("Deathlink Condition is Unknown")
+        else:
+            if trigger.lower() in ["life"]:
+                self.ctx.deathlink_trigger = DEATHLINK_TRIGGER_LIFE
+                logger.info("Deathlink Condition has been set to: 'Life Loss'")
+            elif trigger.lower() in ["game_over"]:
+                self.ctx.deathlink_trigger = DEATHLINK_TRIGGER_GAMEOVER
+                logger.info("Deathlink Condition has been set to: 'Game Over'")
+            else:
+                logger.info("Invalid Deathlink trigger argument")
+
+    def _cmd_deathlink_amnesty(self, value: int = -1) -> None:
+        """
+        Get or Set the number of death before sending a DeathLink.
+        If no arguments are given, will respond with the current amnesty count.
+        :param value: Set the amnesty to this value, must be between 0 and 10.
+        """
+        if not self.ctx.is_connected:
+            logger.info("Not connected to the server.")
+            return
+
+        if self.ctx.handler is not None and self.ctx.handler.gameController is not None:
+            if value == -1:
+                logger.info(f"Current DeathLink Amnesty is set to: {self.ctx.deathlink_amnesty}")
+                return
+            else:
+                value = int(value)
+                if value < 0 or value > 10:
+                    logger.info("Invalid argument, amnesty value must be between 0 and 10")
+                    return
+                
+                self.ctx.deathlink_amnesty = value
+                logger.info(f"New DeathLink Amnesty Value is: {self.ctx.deathlink_amnesty}")
+            
 class TouhouUMContext(CommonContext):
     """Touhou 18 Game Context"""
     handler = None
@@ -79,7 +171,6 @@ class TouhouUMContext(CommonContext):
         self.command_processor = TouhouUMClientProcessor
 
         # Gameplay-related variables
-        # This is the type of data that should be saved when closing the game.
         self.checked_if_owns_stage = False
 
         self.unlocked_characters: list = []
@@ -88,9 +179,13 @@ class TouhouUMContext(CommonContext):
 
         # Deathlink variables
         self.deathlink_enabled: bool = False
+        self.deathlink_trigger: int = None
+        self.deathlink_amnesty: int = None
+
         self.waiting_for_deathlink: bool = False
         self.caused_deathlink: bool = False
         self.died_to_deathlink: bool = False
+        self.last_death_link = None
 
         self.received_item_queue: list[NetworkItem] = [] # All items from the server.
         self.card_item_queue: list = [] # Contains card-related items.
@@ -132,9 +227,13 @@ class TouhouUMContext(CommonContext):
         self.unlocked_stages = []
 
         self.deathlink_enabled = False
+        self.deathlink_trigger = DEATHLINK_TRIGGER_LIFE
+        self.deathlink_amnesty = 1
+
         self.waiting_for_deathlink = False
         self.caused_deathlink = False
         self.died_to_deathlink = False
+        self.last_death_link = 0
 
         self.received_item_queue = []
         self.card_item_queue = []
@@ -270,6 +369,10 @@ class TouhouUMContext(CommonContext):
 
         elif cmd == "Bounced":
             tags = args.get("tags", [])
+
+            if "DeathLink" in tags and self.last_death_link != args["data"]["time"]:
+                self.last_death_link = args["data"]["time"]
+                self.on_deathlink(args["data"])
         
         if cmd == "SetReply":
             print("To be added")
@@ -326,13 +429,21 @@ class TouhouUMContext(CommonContext):
 
         self.location_semaphore_in_use = False
 
+    def on_deathlink(self, data: typing.Dict[str, typing.Any]) -> None:
+        """
+        Method that is called when a Deathlink is received.
+        """
+        self.waiting_for_deathlink = True
+
+        return super().on_deathlink(data)
+
     async def send_deathlink(self):
         """
         Send deathlink to the server if server is active.
         """
         # Don't send anything if deathlink is not enabled.
         if not self.deathlink_enabled: return
-
+        # TODO put funny quotes for deathlink
         await self.send_death(self.player_names[self.slot] + "Has died")
 
 
@@ -658,6 +769,9 @@ class TouhouUMContext(CommonContext):
 
                         # New game
                         if current_stage == 1:
+                            print("new game")
+                            # Incase the player dies with 0 score, it will still recognize a restart
+                            self.handler.setScore(1) 
                             self.handler.setContinues(self.handler.continues)
                             current_character = self.handler.getCurrentCharacter()
                             given_resources = False
@@ -756,7 +870,7 @@ class TouhouUMContext(CommonContext):
                     self.checked_if_owns_stage = False
 
         except Exception as e:
-            logger.error(f"Main ERROR: {e}")
+            logger.error(f"Stage ERROR: {e}")
             logger.error(traceback.format_exc())
             self.in_error = True
 
@@ -879,7 +993,7 @@ class TouhouUMContext(CommonContext):
                     
                     await self.update_locations_checked()
         except Exception as e:
-            logger.error(f"Main ERROR: {e}")
+            logger.error(f"Shop ERROR: {e}")
             logger.error(traceback.format_exc())
             self.in_error = True
 
@@ -986,7 +1100,7 @@ class TouhouUMContext(CommonContext):
                             self.handler.setCardUnlockState(item_card, 0)
 
         except Exception as e:
-            logger.error(f"Main ERROR: {e}")
+            logger.error(f"Main Menu ERROR: {e}")
             logger.error(traceback.format_exc())
             self.in_error = True
 
@@ -1087,7 +1201,7 @@ class TouhouUMContext(CommonContext):
                     reduced_damage_timer -= 1
 
         except Exception as e:
-            logger.error(f"Main ERROR: {e}")
+            logger.error(f"Stage Item ERROR: {e}")
             logger.error(traceback.format_exc())
             self.in_error = True
 
@@ -1095,6 +1209,61 @@ class TouhouUMContext(CommonContext):
         """
         Loop that handles death link.
         """
+        try:
+            active_deathlink = False
+            entered_stage = False
+            current_lives = 0
+            deathlink_counter = 0
+
+            while not self.exit_event.is_set() and self.handler and not self.in_error:   
+                if self.deathlink_enabled:
+                    await asyncio.sleep(1)
+                else: # Can't engage in deathlink if it is not enabled.
+                    await asyncio.sleep(2)
+                    continue
+  
+                # Actively in a stage that is owned by the player.
+                if self.checked_if_owns_stage:
+                    if not entered_stage:
+                        current_lives = self.handler.getLives()
+                        entered_stage = True
+
+                    # Only kill the player when a deathlink is available and the player is currently not dead.
+                    if self.waiting_for_deathlink and self.handler.getPlayerState() == 1:
+                        self.handler.killPlayer()
+                        self.died_to_deathlink = True
+                    
+                    if current_lives != self.handler.getLives():
+                        # Player died
+                        if current_lives > self.handler.getLives():
+                            # Deathlink deaths do not count towards the counter.
+                            if self.died_to_deathlink:
+                                self.died_to_deathlink = False
+                                self.waiting_for_deathlink = False
+                                current_lives = min(self.handler.getLives(), self.handler.max_lives)    
+                                continue
+
+                            # Game Over has lives set to -1 for some reason.
+                            if (self.deathlink_trigger == DEATHLINK_TRIGGER_LIFE or 
+                               (self.deathlink_trigger == DEATHLINK_TRIGGER_GAMEOVER and current_lives == -1)):
+                                deathlink_counter += 1
+
+                                # Send the deathlink to your poor and unfortunate friends.
+                                if deathlink_counter >= self.deathlink_amnesty:
+                                    deathlink_counter = 0
+                                    await self.send_deathlink() 
+                                else:
+                                    logger.info(f"DeathLink: {deathlink_counter}/{self.deathlink_amnesty}")
+
+                        # Kind of a bandage fix for the client loading lives before I can set them to max_lives but it works.
+                        current_lives = min(self.handler.getLives(), self.handler.max_lives)    
+                else:
+                    entered_stage = False
+        except Exception as e:
+            logger.error(f"DeathLink ERROR: {e}")
+            logger.error(traceback.format_exc())
+            self.in_error = True
+
         print("soon")
 
     async def message_loop(self):
@@ -1157,9 +1326,7 @@ async def game_watcher(ctx):
 
         if ctx.loading_data_setup:
             logger.info(f"{SHORT_NAME} process found. Beginning game loop.")
-            ctx.loading_data_setup = False
-            continue
-            
+            ctx.loading_data_setup = False  
 
         logger.info("Beginning main loops")
         client_loops = []
@@ -1167,6 +1334,7 @@ async def game_watcher(ctx):
         client_loops.append(asyncio.create_task(ctx.menu_loop()))
         client_loops.append(asyncio.create_task(ctx.shop_loop()))
         client_loops.append(asyncio.create_task(ctx.stage_item_loop()))
+        client_loops.append(asyncio.create_task(ctx.death_link_loop()))
         # Add more loops later
 
         # Update any locations made before the connection.
@@ -1174,7 +1342,13 @@ async def game_watcher(ctx):
         await ctx.update_locations_checked()
         #TODO: Update Stage List
 
-        #TODO: Death Link stuff
+        if ctx.options["deathlink"]:
+            ctx.deathlink_enabled = True
+            await ctx.update_death_link(True)
+
+        ctx.deathlink_trigger = ctx.options["deathlink_trigger"]  
+
+        ctx.deathlink_amnesty = ctx.options["deathlink_amnesty"]
 
         #TODO: Edit handler as needed
 
