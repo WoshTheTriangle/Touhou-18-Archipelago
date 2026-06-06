@@ -25,13 +25,14 @@ class GameHandler:
     cardsPurchased: list = []
     charactersUnlocked: dict = {}
 
+    unlocked_card_count = 0
+
     endingCompleted: dict = {}
     altEndingCompleted: dict = {}
     extraCompleted: dict = {}
 
     difficultiesUnlocked = []
 
-    extraUnlocked: dict = {}
     previousLocationChecked = []
 
     def __init__(self):
@@ -58,6 +59,9 @@ class GameHandler:
         
         self.setCardSlotCount(1)
 
+        for character in CHARACTERS:
+            self.set_extra_stage_unlock(character, False)
+
     def reset(self) -> None:
 
         # Default values
@@ -71,6 +75,8 @@ class GameHandler:
         cardSlots = 1
         latestStageIndex = 1
 
+        unlocked_card_count = 0
+
         for character in CHARACTERS:
             self.bossesBeaten[character] = {}
             for difficulty in range(4):
@@ -79,8 +85,6 @@ class GameHandler:
                                                             [False, False]]
 
             self.extraBeaten[character] = [False, False]
-
-            self.extraUnlocked[character] = False
 
             self.endingCompleted[character] = False
             self.altEndingCompleted[character] = False
@@ -91,7 +95,7 @@ class GameHandler:
         self.charactersUnlocked[CHARACTER_SAKUYA] = False
         self.charactersUnlocked[CHARACTER_SANAE] = False
 
-        self.difficultiesUnlocked = [False, False, False, True, False]
+        self.difficultiesUnlocked = [False, False, False, True, True]
 
         # No cards ed so far.
         self.cardsPurchased = [False] * 56
@@ -102,7 +106,7 @@ class GameHandler:
             self.stagesUnlocked[character] = {}
             self.stagesUnlocked[character][1] = True
 
-            for i in range(2, 7):
+            for i in range(2, 8):
                 self.stagesUnlocked[character][i] = False
 
             
@@ -118,10 +122,11 @@ class GameHandler:
     def unlock_extra(self, character: int = -1) -> None:
         if character == -1:
             for each_character in CHARACTERS:
-                self.extraUnlocked[each_character] = True
+                self.stagesUnlocked[each_character][7] = True
             return
             
-        self.extraUnlocked[character] = True
+        self.stagesUnlocked[character][7] = True
+
 
     def get_game_state(self) -> int:
         if self.gameController.isShopActive():
@@ -204,9 +209,9 @@ class GameHandler:
             if check_lower_difficulties:
                 if difficultiesUnlocked[DIFFICULTY_EASY]:
                     self.bossesBeaten[current_character][EASY][self.gameController.getStage() - 1][counter] = True
-                if difficultiesUnlocked[DIFFICULTY_NORMAL] and current_difficulty >= 1:
+                if difficultiesUnlocked[DIFFICULTY_NORMAL] and current_difficulty >= DIFFICULTY_NORMAL:
                     self.bossesBeaten[current_character][NORMAL][self.gameController.getStage() - 1][counter] = True
-                if difficultiesUnlocked[DIFFICULTY_HARD] and current_difficulty >= 2:
+                if difficultiesUnlocked[DIFFICULTY_HARD] and current_difficulty >= DIFFICULTY_HARD:
                     self.bossesBeaten[current_character][HARD][self.gameController.getStage() - 1][counter] = True
     
     '''
@@ -227,6 +232,13 @@ class GameHandler:
     def forceToMainMenu(self) -> None:
         print("Force A")
         self.gameController.force_to_main_menu()
+
+    # Unlocks or locks extra stage for a character chosen.
+    def set_extra_stage_unlock(self, character: int, lock_status: bool) -> None:
+        self.gameController.setExtraStageUnlock(character, lock_status)
+
+    def getOptionCount(self) -> int:
+        return self.gameController.getOptionCount()
 
 
     '''
@@ -290,6 +302,14 @@ class GameHandler:
 
     def setBombFrags(self, value) -> None:
         self.gameController.setBombFrags(value)
+
+    def setMaxLives(self, value: int) -> None:
+        value = clamp(0, 7, value)
+        self.max_lives = value
+
+    def setMaxBombs(self, value: int) -> None:
+        value = clamp(0, 7, value)
+        self.max_bombs = value
 
     def getPower(self) -> int:
         return self.gameController.getPower()
@@ -375,16 +395,16 @@ class GameHandler:
         self.gameController.setPower(newPower)
     
     def addInitialLives(self) -> None:
-        self.initial_lives = clamp(0, 8, self.initial_lives + 1)
+        self.initial_lives = clamp(0, 7, self.initial_lives + 1)
 
     def addInitialBombs(self) -> None:
-        self.initial_bombs = clamp(0, 8, self.initial_bombs + 1)
+        self.initial_bombs = clamp(0, 7, self.initial_bombs + 1)
 
     def addMaxLives(self) -> None:
-        self.max_lives = clamp(0, 8, self.max_lives + 1)
+        self.max_lives = clamp(0, 7, self.max_lives + 1)
 
     def addMaxBombs(self) -> None:
-        self.max_bombs = clamp(0, 8, self.max_bombs + 1)
+        self.max_bombs = clamp(0, 7, self.max_bombs + 1)
 
     def addContinues(self) -> None:
         self.continues = clamp(0, 5, self.continues + 1)
@@ -477,6 +497,15 @@ class GameHandler:
 
     def getHandlerCardSlotCount(self) -> int:
         return self.cardSlots
+
+    def get_extra_unlock_status(self, character: int) -> bool:
+        return self.stagesUnlocked[character][7]
+
+    def add_to_unlocked_card_count(self) -> None:
+        self.unlocked_card_count += 1
+
+    def get_unlocked_card_count(self) -> int:
+        return self.unlocked_card_count
 
     '''
     Shop Settings

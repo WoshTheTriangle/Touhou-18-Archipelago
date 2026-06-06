@@ -9,7 +9,7 @@ def create_and_connect_regions(world) -> None:
     #create_events(world)
 
 def create_events(world) -> None:
-    print("h")
+    print("events someday")
 
 def create_regions(world) -> None:
     exclude_lunatic = world.options.exclude_lunatic

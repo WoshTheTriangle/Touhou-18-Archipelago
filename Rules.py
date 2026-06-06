@@ -47,7 +47,6 @@ def set_all_entrance_rules(world) -> None:
                 entrance_name = world.get_entrance(f"[{character}] Enter Stage {stage}")
                 world.set_rule(entrance_name, stage_rule)
     
-    # TODO: I don't think not including the lower difficulty check will matter but I will keep it in mind incase it does.
     # This is basically just a future note to myself.
 
     if difficulty_toggle:

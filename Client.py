@@ -166,6 +166,9 @@ class TouhouUMContext(CommonContext):
 
         self.location_semaphore_in_use = False
 
+        self.magatama_id: int = 0
+        self.blank_card_id: int = 0
+
         self.all_location_ids = []
         self.previous_location_checked = []
         self.command_processor = TouhouUMClientProcessor
@@ -198,6 +201,7 @@ class TouhouUMContext(CommonContext):
         self.last_received_item_index_server: int = -1
 
         self.custom_data_keys_list: list = None
+        self.data_sent = False
 
         self.reset()
 
@@ -222,6 +226,9 @@ class TouhouUMContext(CommonContext):
 
         self.location_semaphore_in_use = False
 
+        self.magatama_id = 0
+        self.blank_card_id = 0
+
         self.unlocked_characters = []
         self.unlocked_cards = []
         self.unlocked_stages = []
@@ -244,6 +251,7 @@ class TouhouUMContext(CommonContext):
         self.loaded_past_received_items = False
 
         self.last_received_item_index_server = -1
+        self.data_sent = False
 
     def reset_game_data(self):
         if self.handler == None: return
@@ -316,13 +324,13 @@ class TouhouUMContext(CommonContext):
     def on_package(self, cmd: str, args: dict):
         """
         Manage packages received from the server
-        This is the big method.
+        This is the big networking method for the receiving part of it.
         """
 
         if cmd == "RoomInfo":
             self.seed_name = args["seed_name"]
 
-        if cmd == "Connected":
+        if cmd == "Connected": # Initial connection data
             self.previous_location_checked = args["checked_locations"]
             self.all_location_ids = set(args["missing_locations"] + args["checked_locations"])
             self.options = args["slot_data"] #Yaml options
@@ -331,10 +339,12 @@ class TouhouUMContext(CommonContext):
             self.slot = args["slot"]
             self.custom_data_keys_list = [f"{str(self.team)}_{str(self.slot)}_LastItemIndexTH18"] 
 
-            #TODO: Custom stuff and location mapping
             self.stage_location_mappings = getStageLocationMapping(self.options["difficulty_check"])
             self.location_id_to_card_id = getAPIDsForCards()
             self.location_id_to_ending_mapping = getLocationIDsToEndingMapping()
+
+            self.blank_card_id = location_table[f"Unlocked {BLANK_CARD_NAME}"]
+            self.magatama_id = location_table[f"Unlocked {MAGATAMA_CARD_NAME}"]
 
             if self.handler is not None:
                 self.handler.reset()
@@ -355,7 +365,7 @@ class TouhouUMContext(CommonContext):
                 else:
                     self.last_received_item_index_server = -1
 
-        elif cmd == "DataPackage":
+        elif cmd == "DataPackage": 
             if not self.all_location_ids:
                 return
             self.location_name_to_ap_id = args["data"]["games"][DISPLAY_NAME]["location_name_to_id"]
@@ -367,15 +377,19 @@ class TouhouUMContext(CommonContext):
             self.item_name_to_ap_id = args["data"]["games"][DISPLAY_NAME]["item_name_to_id"]
             self.item_ap_id_to_name = {v: k for k, v in self.item_name_to_ap_id.items()}
 
-        elif cmd == "Bounced":
+        elif cmd == "Bounced": # Currently just deathlink updates.
             tags = args.get("tags", [])
 
             if "DeathLink" in tags and self.last_death_link != args["data"]["time"]:
                 self.last_death_link = args["data"]["time"]
                 self.on_deathlink(args["data"])
         
-        if cmd == "SetReply":
-            print("To be added")
+        # TODO, I don't know if SetReply is the best option for this considering it will send stuff to other players
+        # but it's the best idea I had in mind for now so it will be here for now.
+        if cmd == "SetReply": # Ensure that the last item index received has been updated.
+            if args["slot"] == self.slot:
+                self.data_sent = True
+                print("We got stuff")
 
     async def send_victory(self) -> None:
         await self.send_msgs([{"cmd": 'StatusUpdate', "status": 30}])
@@ -390,13 +404,35 @@ class TouhouUMContext(CommonContext):
         """
         Send the new last received item ID to the server.
         """
+        self.data_sent = False
+
         # Send new ending index to the sever
         index_msg = [{"cmd": "Set",
                       "key": self.custom_data_keys_list[0],
+                      "want_reply": True,
                       "default": 0,
                       "operations": [{"operation": "replace", "value": self.last_received_item_index_server}]
                       }]
         await self.send_msgs(index_msg)
+        asyncio.create_task(confirm_data_sent())
+
+    async def confirm_data_sent(self):
+        """
+        Mini loop which checks if a SetReply has been sent back.
+        If not, resend the Set command in order to ensure that the server has received it.
+        """
+        while(True):
+            await asyncio.sleep(5)
+            if data_sent: # Received SetReply so we can leave just fine.
+                break
+            else: # Seems the server did not get the command. Resend it.
+                index_msg = [{"cmd": "Set",
+                        "key": self.custom_data_keys_list[0],
+                        "want_reply": True,
+                        "default": 0,
+                        "operations": [{"operation": "replace", "value": self.last_received_item_index_server}]
+                        }]
+                await self.send_msgs(index_msg)
 
     async def update_locations_checked(self):
         """
@@ -405,6 +441,7 @@ class TouhouUMContext(CommonContext):
         self.location_semaphore_in_use = True
 
         new_locations = []
+        cards_unlocked = 0
 
         # Stage-related Locations
         for id, map in self.stage_location_mappings.items():
@@ -415,6 +452,7 @@ class TouhouUMContext(CommonContext):
         for id, card_id in self.location_id_to_card_id.items():
             if id not in self.previous_location_checked and self.handler.hasCardBeenPurchased(card_id):
                 new_locations.append(id)
+                cards_unlocked += 1
 
         # Goal check
         for id, ending_map in self.location_id_to_ending_mapping.items():
@@ -422,6 +460,12 @@ class TouhouUMContext(CommonContext):
                 self.handler.setGoalCompleted(*ending_map)
                 new_locations.append(id)
         
+        # Unlocking Sky-Blue Magatama and Blank Card
+        if self.options["magatama_req"] <= self.handler.get_unlocked_card_count() + cards_unlocked:
+            new_locations.append(self.magatama_id)
+        if self.options["blank_card_req"] <= self.handler.get_unlocked_card_count() + cards_unlocked:
+            new_locations.append(self.blank_card_id)
+
         # If there are any new locations, add them to the list and send them to the server.
         if new_locations:
             self.previous_location_checked += new_locations
@@ -467,32 +511,28 @@ class TouhouUMContext(CommonContext):
             print("waiting for the game")
             await asyncio.sleep(0.5)
 
-        # TODO make some json stuff since this does nothing rn.
+        # You have no items acquired but have had some in a previous session.
         if (not self.all_received_items or self.all_received_items == []) and self.last_received_item_index_server > 0:
             local_list_length = self.last_received_item_index_server
 
-        # All items are here
+        # All items the player has received are here
         if network_index <= 0:
             # Some desync has occurred between the server and client.
             if len(network_items_list) < local_list_length:
                 logger.info("Error: Client has more items than the server's received item list")
                 self.all_received_items = []
-                
-                #await self.add_to_item_list(network_items_list)
-
-                #TODO th18.5 saved everything to a json. idk if I should do that as well.
-                # Normally theres a return here but idk
-
             new_items_list = network_items_list
 
-        else: # Network index is not 0
+        else: # Network index is not 0, new items
             if local_list_length == network_index:
                 new_items_list = network_items_list
             # A desync has occurred
             else:
-                logger.info("Error: Desync issue")
+                logger.info("Error: Desync between client and server items has occurred")
                 sync_msg = [{"cmd": "Sync"}]
-                # TODO locations checked?
+                if self.locations_checked:
+                    sync_msg.append({"cmd": "LocationChecks",
+                                     "locations": list(self.locations_checked)})
                 await self.send_msgs(sync_msg)
 
         if len(new_items_list) <= 0: return
@@ -538,12 +578,13 @@ class TouhouUMContext(CommonContext):
             if not card_id in ITEM_CARDS:
                 self.handler.setCardUnlockState(card_id, True)
             
+            self.handler.add_to_unlocked_card_count()
+            
         self.card_item_queue = []
 
         if self.options["goal"] == GOAL_ITEMS or self.options["goal"] == GOAL_ALL:
             self.check_victory()
         
-    #TODO
     def handle_permanent_items(self):
         """
         These items can be processed anywhere at any time. The vast majority of them.
@@ -740,6 +781,8 @@ class TouhouUMContext(CommonContext):
 
             currently_in_stage = True
 
+            impossible_state = False
+
             time_in_stage = 0
             game_state = -1
 
@@ -762,22 +805,20 @@ class TouhouUMContext(CommonContext):
                         currently_in_stage = True
                         boss_counter = -1
                         boss_present = False
+                        impossible_state = False
                         current_score = self.handler.getScore()
                         current_continue = self.handler.getContinues()
                         current_stage = self.handler.getStage()
+                        
                         self.handler.updateCardLockState()
 
-                        # New game
-                        if current_stage == 1:
-                            print("new game")
+                        # New game or extra stage
+                        if current_stage == 1 or current_stage == 7:
                             # Incase the player dies with 0 score, it will still recognize a restart
                             self.handler.setScore(1) 
-                            self.handler.setContinues(self.handler.continues)
                             current_character = self.handler.getCurrentCharacter()
+                            if current_stage == 1: self.handler.setContinues(self.handler.continues)
                             given_resources = False
-
-                        if False: #TODO add state to see impossible stuff
-                            self.able_to_check = False
 
                     # This specific block is for if the player restarts the game or uses a continue.
                     if not given_resources:
@@ -792,31 +833,32 @@ class TouhouUMContext(CommonContext):
                         current_lives = self.handler.getLives()
 
                     # Allow the game to fully load the stage first.
-                    # If the client attempts to force the player back while the stage is loading
-                    # the game will crash.
+                    # If the client attempts to force the player back while the stage is loading the game will crash.
                     if not self.checked_if_owns_stage:
                         time_in_stage = self.handler.getTimeInStage()
-
                         if time_in_stage >= 120:
                             self.checked_if_owns_stage = True
 
                             if current_stage == None or current_character == None:
                                 current_character = self.handler.getCurrentCharacter()
                                 current_stage = self.handler.getStage()
-                            
                             # If the current stage is not unlocked, send the player back.
                             if not self.handler.isStageUnlocked(current_character, current_stage):
-                                self.handler.forceToMainMenu()
-                                self.checked_if_owns_stage = False
-                                continue
-
+                                impossible_state = True
                             # Player snuck in with a character they don't own.
                             if not self.handler.isCharacterUnlocked(current_character):
-                                logger.info("Error: Current character is not unlocked. Going back to Main Menu")
+                                logger.info("Error: Character is not unlocked. Going back to Main Menu")
+                                impossible_state = True
+                            # Player snuck in with a difficulty that has not been unlocked yet.
+                            if not self.handler.isDifficultyUnlocked(self.handler.getDifficulty()):
+                                logger.info("Error: Difficulty is not unlocked. Going back to Main Menu")
+                                impossible_state = True
+    
+                            if impossible_state:
                                 self.handler.forceToMainMenu()
                                 self.checked_if_owns_stage = False
-                                continue
 
+                    # Checking for continues and restarts.
                     if current_score > self.handler.getScore():
                         if current_continue > self.handler.getContinues():
                             # Player's score could have lowered due to using a continue.
@@ -830,7 +872,7 @@ class TouhouUMContext(CommonContext):
                     else: # Update Score
                         current_score = self.handler.getScore()
 
-                    # Check for if a boss appeared.
+                    # Check if a boss appeared.
                     if not boss_present:
                         if self.handler.isBossActive():
                             boss_present = True
@@ -997,6 +1039,8 @@ class TouhouUMContext(CommonContext):
             logger.error(traceback.format_exc())
             self.in_error = True
 
+    # TODO find a way to make moving around menu options not look ugly
+    # TODO find a way to make it so you can't screw yourself by unlocking Reimu and then Sakuya since you can't get to Sakuya
     async def menu_loop(self):
         """
 		Loop for dealing with main menu stuff.
@@ -1038,8 +1082,18 @@ class TouhouUMContext(CommonContext):
                         currently_in_menu = True  
 
                         # If a card has been received, make it show in the main menu.
+                        # Also locks cards that you have in your inventory despite not being given to you.
                         for item_card in ITEM_CARDS:
                             self.handler.setCardUnlockState(item_card, self.handler.hasCardBeenReceived(item_card))
+
+                        # Set extra stage for every character depending on whether you have them unlocked or not.
+                        # You also need the Sky-Blue Magatama.
+                        # TODO make sure this works
+                        for character in CHARACTERS:
+                            if self.handler.hasCardBeenReceived(MAGATAMA_CARD):
+                                self.handler.set_extra_stage_unlock(character, self.handler.get_extra_unlock_status(character))
+                            else:
+                                self.handler.set_extra_stage_unlock(character, False)
 
                         '''
                         Additional Location Check upon entering the menu.
@@ -1078,16 +1132,16 @@ class TouhouUMContext(CommonContext):
 
                         # Player entered a difficulty they do not have access to, fix it.
                         if not self.handler.isDifficultyUnlocked(selected_difficulty):
-                            logger.info(f"""Error: Entered locked difficulty option. Defaulting to 
-                                        {DIFFICULTY_NAMES[default_difficulty]}""")
+                            logger.info(f"""Error: Entered locked difficulty option. Defaulting to {DIFFICULTY_NAMES[default_difficulty]}""")
                             self.handler.setDifficulty(default_difficulty) 
                     elif menu_select_state == DIFFICULTY_SELECT:
-                        current_difficulty = self.handler.getMainMenuSelect()
+                        if self.handler.getOptionCount() != 1: # 1 is extra select.
+                            current_difficulty = self.handler.getMainMenuSelect()
 
-                        if not self.handler.isDifficultyUnlocked(current_difficulty):
-                            self.handler.setMainMenuSelect(previous_difficulty)
-                            current_difficulty = previous_difficulty
-                        previous_difficulty = current_difficulty
+                            if not self.handler.isDifficultyUnlocked(current_difficulty):
+                                self.handler.setMainMenuSelect(previous_difficulty)
+                                current_difficulty = previous_difficulty
+                            previous_difficulty = current_difficulty
 
                 elif currently_in_menu:
                     #logger.info("Left main menu")
@@ -1149,7 +1203,7 @@ class TouhouUMContext(CommonContext):
                                 self.handler.addFunds(10)
                             case 401:
                                 self.handler.addFunds(25)
-                            case 402:
+                            case 402: #TODO make power able to update shot level
                                 self.handler.addPower(1)
                             case 403:
                                 self.handler.addPower(10)
@@ -1179,9 +1233,7 @@ class TouhouUMContext(CommonContext):
                                 self.handler.addPower(-25)    
                             case 507:
                                 self.handler.addPower(-50)  
-                            case 508:
-                                print("Trap: Weakness.")
-                                # TODO
+                            # Would be the weakness trap but it is not implemented right now.
                             case 509:
                                 self.handler.killPlayer()
                 
@@ -1209,6 +1261,7 @@ class TouhouUMContext(CommonContext):
         """
         Loop that handles death link.
         """
+        print("death link loop init")
         try:
             active_deathlink = False
             entered_stage = False
@@ -1263,8 +1316,6 @@ class TouhouUMContext(CommonContext):
             logger.error(f"DeathLink ERROR: {e}")
             logger.error(traceback.format_exc())
             self.in_error = True
-
-        print("soon")
 
     async def message_loop(self):
         """
@@ -1340,7 +1391,6 @@ async def game_watcher(ctx):
         # Update any locations made before the connection.
 
         await ctx.update_locations_checked()
-        #TODO: Update Stage List
 
         if ctx.options["deathlink"]:
             ctx.deathlink_enabled = True
@@ -1350,7 +1400,9 @@ async def game_watcher(ctx):
 
         ctx.deathlink_amnesty = ctx.options["deathlink_amnesty"]
 
-        #TODO: Edit handler as needed
+        # Initial maximum lives and bombs
+        ctx.handler.setMaxLives(ctx.options["init_max_lives"])
+        ctx.handler.setMaxBombs(ctx.options["init_max_bombs"])
 
         # If all is going well, we can just loop forever.
         while not ctx.exit_event.is_set() and ctx.server and not ctx.in_error:

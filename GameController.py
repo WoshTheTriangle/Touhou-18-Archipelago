@@ -189,6 +189,23 @@ class GameController:
         address = getPointerAddress(self.pm, self.scorefilePtr, ADDR_CARD_SLOTS_OFFSET)
         self.pm.write_int(address, value)
 
+    # Unlocks or locks extra stage for a character chosen.
+    def setExtraStageUnlock(self, character: int, lock_status: bool) -> None:
+        lock_status = 1 if lock_status else 0
+        address = self.pm.read_int(self.scorefilePtr)
+        address += ADDR_SCOREFILE_CHARACTER_OFFSET
+
+        character_offset = character * ADDR_SCOREFILE_SHOTTYPE_SIZE
+
+        address += character_offset + ADDR_DIFFICULTIES_BEATEN_OFFSET
+
+        for i in range(5):
+            self.pm.write_int(address + (i * 4), lock_status)
+
+    # This is only going to be used to see if we are entering the extra stage.
+    def getOptionCount(self) -> int:
+        return self.pm.read_int(self.mainMenuPtr + ADDR_SELECTION_OPTION_COUNT)
+
     '''
     Stage and Card Info
     '''

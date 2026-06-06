@@ -248,7 +248,7 @@ item_table: Dict[str, TouhouUMItemData] = {
     "-100 Funds" : TouhouUMItemData(CATEGORY_TRAP, 505, ItemClassification.trap),
     "-25 Power" : TouhouUMItemData(CATEGORY_TRAP, 506, ItemClassification.trap),
     "-50 Power" : TouhouUMItemData(CATEGORY_TRAP, 507, ItemClassification.trap),
-    "50% Damage" : TouhouUMItemData(CATEGORY_TRAP, 508, ItemClassification.trap),
+    #"50% Damage" : TouhouUMItemData(CATEGORY_TRAP, 508, ItemClassification.trap),
     "Death" : TouhouUMItemData(CATEGORY_TRAP, 509, ItemClassification.trap),
 
     # Victory conditions
@@ -336,7 +336,7 @@ ITEM_ID_TO_CARD_ID: Dict[int, int] = {
     353: MAGATAMA_CARD, 
 }
 
-PERMANENT_ITEMS = [1, 2, 3, 4, 5,
+PERMANENT_ITEMS = [1, 2, 3, 4, 5, 12, 13,
                    100, 101, 102, 103,
                    200, 201, 202, 203, 204, 205, 206,
                    207, 208, 209,

@@ -160,7 +160,6 @@ def getLocationIDsToEndingMapping():
             goal_id = GOAL_MOMOYO
 
         mapping[id] = [character_id, goal_id]
-        print("h")
 
     return mapping
 

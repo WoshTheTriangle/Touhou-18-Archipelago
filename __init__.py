@@ -55,6 +55,7 @@ class TouhouUMWorld(World):
         if self.options.exclude_lunatic:
             self.push_precollected(self.create_item("Lower Difficulty"))
 
+
     def set_rules(self) -> None:
         Rules.set_all_rules(self)
 
