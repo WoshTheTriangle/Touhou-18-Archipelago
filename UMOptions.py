@@ -188,6 +188,12 @@ class DeathLinkAmnesty(Range):
     range_end = 10
     default = 1
 
+class RingLink(Toggle):
+    """
+    Enable RingLink. This makes your gain/loss of funds linked to other players.
+    Can be changed later.
+    """
+    display_name = "Toggle Ring Link"
 
 class TrapChance(Range):
     """
@@ -219,4 +225,5 @@ class Th18Options(PerGameCommonOptions):
     deathlink: DeathLink
     deathlink_trigger: DeathLinkTrigger
     deathlink_amnesty: DeathLinkAmnesty
+    ring_link: RingLink
 

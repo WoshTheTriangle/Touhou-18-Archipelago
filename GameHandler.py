@@ -390,8 +390,15 @@ class GameHandler:
         self.setBombs(self.getBombs() + extra_bombs)
         self.setBombFrags(bomb_frags % 3)
 
-    def addPower(self, value) -> None:
-        newPower = clamp(0, 400, self.gameController.getPower() + value)
+    # Since you cannot add options via editing power numbers, we will simply leave it at the closest X.99 or 4.00
+    def addPower(self, value) -> None: 
+        current_power = self.gameController.getPower()
+        hundred_cap = ((current_power // 100) * 100) + 100
+
+        # Edge case if power is 4.00
+        if hundred_cap == 500: hundred_cap = 401
+
+        newPower = clamp(0, hundred_cap - 1, current_power + value)
         self.gameController.setPower(newPower)
     
     def addInitialLives(self) -> None:

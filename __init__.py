@@ -82,6 +82,7 @@ class TouhouUMWorld(World):
             "exclude_lunatic", "init_max_lives", 
             "max_life_item", "init_max_bombs", 
             "max_bomb_item", "deathlink", 
-            "deathlink_trigger", "deathlink_amnesty"
+            "deathlink_trigger", "deathlink_amnesty",
+            "ring_link"
         )
         return data

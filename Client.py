@@ -1,6 +1,7 @@
 import os
 import pkgutil
 import random
+import time
 import traceback
 import typing
 from typing import Optional
@@ -42,9 +43,9 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
 
     def _cmd_deathlink(self, new_state: str = None) -> None:
         """
-        Toggle DeathLink on or off.
-        If no arguments are given, will respond with current deathlink status.
-        :param active: If "on" or "true", enable DeathLink. If "off" or "false", disable DeathLink.
+        Toggle Death Link on or off.
+        If no arguments are given, will respond with current Death Link status.
+        :param active: If "on" or "true", enable Death Link. If "off" or "false", disable Death Link.
         """
         changed = False
 
@@ -54,7 +55,7 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
 
         if new_state != None:
             if new_state.lower() in ["on", "true"]:  
-                logger.info("DeathLink Enabled")
+                logger.info("Death Link Enabled")
                 if "DeathLink" not in self.ctx.tags:
                     self.ctx.tags.add("DeathLink")
                     self.ctx.deathlink_enabled = True
@@ -64,7 +65,7 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
                     self.ctx.tags.remove("DeathLink")
                     self.ctx.deathlink_enabled = False
                     changed = True
-                logger.info("DeathLink Disabled")
+                logger.info("Death Link Disabled")
             else:
                 logger.info("Invalid argument, use 'on' or 'off'")
 
@@ -72,13 +73,13 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
                 asyncio.create_task(self.ctx.send_msgs([{"cmd": "ConnectUpdate", "tags": self.ctx.tags}]))
             return
 
-        logger.info(f"Deathlink status: {self.ctx.deathlink_enabled}")
+        logger.info(f"Death Link status: {self.ctx.deathlink_enabled}")
         if not self.ctx.deathlink_enabled: return
 
         if self.ctx.deathlink_trigger == DEATHLINK_TRIGGER_LIFE:
-            logger.info("DeathLink on Life Loss")
+            logger.info("Death Link on Life Loss")
         elif self.ctx.deathlink_trigger == DEATHLINK_TRIGGER_GAMEOVER:
-            logger.info("DeathLink on Game Over")
+            logger.info("Death Link on Game Over")
 
     def _cmd_deathlink_trigger(self, trigger: str = None) -> None:
         """
@@ -95,24 +96,24 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
 
         if trigger is None:
             if self.ctx.deathlink_trigger == DEATHLINK_TRIGGER_LIFE:
-                logger.info("Deathlink on Life Loss")
+                logger.info("Death Link on Life Loss")
             elif self.deathlink_trigger == DEATHLINK_TRIGGER_GAMEOVER:
-                logger.info("Deathlink on Game Over")
+                logger.info("Death Link on Game Over")
             else:
-                logger.info("Deathlink Condition is Unknown")
+                logger.info("Death Link Condition is Unknown")
         else:
             if trigger.lower() in ["life"]:
                 self.ctx.deathlink_trigger = DEATHLINK_TRIGGER_LIFE
-                logger.info("Deathlink Condition has been set to: 'Life Loss'")
+                logger.info("Death Link Condition has been set to: 'Life Loss'")
             elif trigger.lower() in ["game_over"]:
                 self.ctx.deathlink_trigger = DEATHLINK_TRIGGER_GAMEOVER
-                logger.info("Deathlink Condition has been set to: 'Game Over'")
+                logger.info("Death Link Condition has been set to: 'Game Over'")
             else:
-                logger.info("Invalid Deathlink trigger argument")
+                logger.info("Invalid Death Link trigger argument")
 
     def _cmd_deathlink_amnesty(self, value: int = -1) -> None:
         """
-        Get or Set the number of death before sending a DeathLink.
+        Get or Set the number of death before sending a Death Link.
         If no arguments are given, will respond with the current amnesty count.
         :param value: Set the amnesty to this value, must be between 0 and 10.
         """
@@ -122,7 +123,7 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
 
         if self.ctx.handler is not None and self.ctx.handler.gameController is not None:
             if value == -1:
-                logger.info(f"Current DeathLink Amnesty is set to: {self.ctx.deathlink_amnesty}")
+                logger.info(f"Current Death Link Amnesty is set to: {self.ctx.deathlink_amnesty}")
                 return
             else:
                 value = int(value)
@@ -131,7 +132,42 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
                     return
                 
                 self.ctx.deathlink_amnesty = value
-                logger.info(f"New DeathLink Amnesty Value is: {self.ctx.deathlink_amnesty}")
+                logger.info(f"New Death Link Amnesty Value is: {self.ctx.deathlink_amnesty}")
+
+    def _cmd_ringlink(self, new_state: str = None) -> None:
+        """
+        Toggle Ring Link on or off.
+        If no arguments are given, will respond with the current state of Ring Link.
+        :param active: If "on" or "true", enable Ring Link. If "off" or "false", disable Ring Link.
+        """
+        changed = False
+
+        if not self.ctx.is_connected:
+            logger.info("Not connected to the server.")
+            return
+
+        if new_state != None:
+            if new_state.lower() in ["on", "true"]:  
+                logger.info("Ring Link Enabled")
+                if "RingLink" not in self.ctx.tags:
+                    self.ctx.tags.add("RingLink")
+                    self.ctx.ring_link_enabled = True
+                    changed = True
+            elif new_state.lower() in ["off", "false"]:
+                if "RingLink" in self.ctx.tags:
+                    self.ctx.tags.remove("RingLink")
+                    self.ctx.ring_link_enabled = False
+                    changed = True
+                logger.info("Ring Link Disabled")
+            else:
+                logger.info("Invalid argument, use 'on' or 'off'")
+
+            if changed:
+                asyncio.create_task(self.ctx.send_msgs([{"cmd": "ConnectUpdate", "tags": self.ctx.tags}]))
+            return
+
+        logger.info(f"Ring Link status: {self.ctx.ring_link_enabled}")
+
             
 class TouhouUMContext(CommonContext):
     """Touhou 18 Game Context"""
@@ -188,7 +224,13 @@ class TouhouUMContext(CommonContext):
         self.waiting_for_deathlink: bool = False
         self.caused_deathlink: bool = False
         self.died_to_deathlink: bool = False
-        self.last_death_link = None
+        self.last_death_link: float = None
+
+        # Ringlink variables
+        self.ring_link_enabled: bool = False
+        self.last_funds: int = 0
+        self.last_ring_link: float = 0
+        self.ring_link_id: int = None
 
         self.received_item_queue: list[NetworkItem] = [] # All items from the server.
         self.card_item_queue: list = [] # Contains card-related items.
@@ -241,6 +283,11 @@ class TouhouUMContext(CommonContext):
         self.caused_deathlink = False
         self.died_to_deathlink = False
         self.last_death_link = 0
+
+        self.ring_link_enabled = False
+        self.last_funds = 0
+        self.last_ring_link = 0
+        self.ring_link_id = None
 
         self.received_item_queue = []
         self.card_item_queue = []
@@ -377,12 +424,16 @@ class TouhouUMContext(CommonContext):
             self.item_name_to_ap_id = args["data"]["games"][DISPLAY_NAME]["item_name_to_id"]
             self.item_ap_id_to_name = {v: k for k, v in self.item_name_to_ap_id.items()}
 
-        elif cmd == "Bounced": # Currently just deathlink updates.
+        elif cmd == "Bounced": # DeathLink and RingLink updates
             tags = args.get("tags", [])
 
             if "DeathLink" in tags and self.last_death_link != args["data"]["time"]:
                 self.last_death_link = args["data"]["time"]
                 self.on_deathlink(args["data"])
+
+            if "RingLink" in tags and self.ring_link_id != None:
+                self.last_ring_link = args["data"]["time"]
+                self.on_ringlink(args["data"])
         
         # TODO, I don't know if SetReply is the best option for this considering it will send stuff to other players
         # but it's the best idea I had in mind for now so it will be here for now.
@@ -490,6 +541,30 @@ class TouhouUMContext(CommonContext):
         # TODO put funny quotes for deathlink
         await self.send_death(self.player_names[self.slot] + "Has died")
 
+
+    def on_ringlink(self, data: typing.Dict[str, typing.Any]) -> None:
+        """
+        Method that is called when a Ring Link is received.
+        """
+
+        # Ring link can only be received when in stage.
+        if self.checked_if_owns_stage:
+            # Ensure that the ring link was not from ourselves.
+            if data["source"] != self.ring_link_id:
+                self.handler.addFunds(data["amount"])
+                self.last_funds = self.hander.getFunds()
+
+    def set_ring_link_tag(self, active: bool):
+        """
+        Updates Ring Link tag and sends said update to the server.
+        """
+        if active:
+            self.tags.add("RingLink")
+            self.ring_link_is_active = True
+        else:
+            self.tags.remove("RingLink")
+            self.ring_link_is_active = False
+        asyncio.create_task(self.send_msgs([{"cmd": "ConnectUpdate", "tags": self.tags}]))
 
     '''
     Handling Item List
@@ -867,6 +942,8 @@ class TouhouUMContext(CommonContext):
                         else:
                             # Player has restarted the game.     
                             currently_in_stage = False
+                            # This one may seem kinda counterintuitive but it is for ringlink to know that you didn't suddenly lose all of your funds.
+                            self.checked_if_owns_stage = False 
                             continue
                         given_resources = False
                     else: # Update Score
@@ -1088,7 +1165,6 @@ class TouhouUMContext(CommonContext):
 
                         # Set extra stage for every character depending on whether you have them unlocked or not.
                         # You also need the Sky-Blue Magatama.
-                        # TODO make sure this works
                         for character in CHARACTERS:
                             if self.handler.hasCardBeenReceived(MAGATAMA_CARD):
                                 self.handler.set_extra_stage_unlock(character, self.handler.get_extra_unlock_status(character))
@@ -1203,7 +1279,7 @@ class TouhouUMContext(CommonContext):
                                 self.handler.addFunds(10)
                             case 401:
                                 self.handler.addFunds(25)
-                            case 402: #TODO make power able to update shot level
+                            case 402:
                                 self.handler.addPower(1)
                             case 403:
                                 self.handler.addPower(10)
@@ -1272,7 +1348,7 @@ class TouhouUMContext(CommonContext):
                 if self.deathlink_enabled:
                     await asyncio.sleep(1)
                 else: # Can't engage in deathlink if it is not enabled.
-                    await asyncio.sleep(2)
+                    await asyncio.sleep(5)
                     continue
   
                 # Actively in a stage that is owned by the player.
@@ -1314,6 +1390,49 @@ class TouhouUMContext(CommonContext):
                     entered_stage = False
         except Exception as e:
             logger.error(f"DeathLink ERROR: {e}")
+            logger.error(traceback.format_exc())
+            self.in_error = True
+
+    async def ring_link_loop(self):
+        """
+        Loop that handles ring link.
+        """
+        print("ring link loop init")
+        try:
+            active_ringlink = False
+            current_funds = 0
+            self.last_funds = -1
+            funds_difference = 0
+
+            self.ring_link_id = f"{str(self.team)}_{str(self.slot)}_RingLinkTH18"
+            
+            while not self.exit_event.is_set() and self.handler and not self.in_error:   
+                if self.ring_link_enabled:
+                    await asyncio.sleep(1.5)
+                else: # Can't engage in ringlink if it is not enabled.
+                    await asyncio.sleep(5)
+                    self.last_funds = -1
+                    continue
+
+                if self.checked_if_owns_stage:
+                    current_funds = self.handler.getFunds()
+
+                    if self.last_funds == -1:
+                        await asyncio.sleep(1)
+                        self.last_funds = current_funds
+                        continue
+
+                    if self.last_funds != current_funds:
+                        funds_difference = current_funds - self.last_funds
+                        print(f"Funds changed, changed by {funds_difference}")
+                        self.last_funds = current_funds
+                        asyncio.create_task(self.send_msgs([{"cmd": "Bounce", "tags": ["RingLink"], "data": {"amount": funds_difference, "source": self.ring_link_id, "time": time.time()}}]))
+                else:
+                    self.last_funds = -1
+
+                
+        except Exception as e:
+            logger.error(f"RingLink ERROR: {e}")
             logger.error(traceback.format_exc())
             self.in_error = True
 
@@ -1386,6 +1505,7 @@ async def game_watcher(ctx):
         client_loops.append(asyncio.create_task(ctx.shop_loop()))
         client_loops.append(asyncio.create_task(ctx.stage_item_loop()))
         client_loops.append(asyncio.create_task(ctx.death_link_loop()))
+        client_loops.append(asyncio.create_task(ctx.ring_link_loop()))
         # Add more loops later
 
         # Update any locations made before the connection.
@@ -1399,6 +1519,10 @@ async def game_watcher(ctx):
         ctx.deathlink_trigger = ctx.options["deathlink_trigger"]  
 
         ctx.deathlink_amnesty = ctx.options["deathlink_amnesty"]
+
+        if ctx.options["ring_link"]:
+            ctx.ring_link_enabled = True
+            ctx.set_ring_link_tag(True)
 
         # Initial maximum lives and bombs
         ctx.handler.setMaxLives(ctx.options["init_max_lives"])
