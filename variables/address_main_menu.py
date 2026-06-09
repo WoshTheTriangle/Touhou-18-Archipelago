@@ -29,6 +29,9 @@ ADDR_SELECTION_OPTION_COUNT = 0x2c
 
 ADDR_MENU_SELECT = [0x24]
 
+ADDR_MENU_RESTRICT_HEAD_OFFSET = [0xB4] # Array of size 4
+ADDR_MENU_RESTRICT_SIZE_OFFSET = [0xF4] # Entry point, exit point is +4
+
 '''
 Scorefile offsets
 '''

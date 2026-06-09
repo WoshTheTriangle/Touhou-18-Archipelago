@@ -147,8 +147,8 @@ def get_item_to_id_dict() -> Dict[str, int]:
 
 item_table: Dict[str, TouhouUMItemData] = {
     # Useful for Stage Completion
-    "+1 Starting Life" : TouhouUMItemData(CATEGORY_STAGE, 1, ItemClassification.progression, 8),
-    "+1 Starting Bomb" : TouhouUMItemData(CATEGORY_STAGE, 2, ItemClassification.progression, 8),
+    "+1 Starting Life" : TouhouUMItemData(CATEGORY_STAGE, 1, ItemClassification.progression, 7),
+    "+1 Starting Bomb" : TouhouUMItemData(CATEGORY_STAGE, 2, ItemClassification.progression, 7),
     "+1 Continue" : TouhouUMItemData(CATEGORY_ITEM, 3, ItemClassification.useful, 5),
     "Lower Difficulty" : TouhouUMItemData(CATEGORY_ITEM, 4, ItemClassification.progression, 3), #maybe useful later idk
     "Extra Starting Card Slot" : TouhouUMItemData(CATEGORY_ITEM, 5, ItemClassification.useful, 2),

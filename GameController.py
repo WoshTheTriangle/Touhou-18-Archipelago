@@ -206,6 +206,26 @@ class GameController:
     def getOptionCount(self) -> int:
         return self.pm.read_int(self.mainMenuPtr + ADDR_SELECTION_OPTION_COUNT)
 
+    # Sets the menu restriction to the first 4 items of the array.
+    def initMenuRestrict(self) -> None:
+        address = getPointerAddress(self.pm, self.mainMenuPtr, ADDR_MENU_RESTRICT_SIZE_OFFSET)
+        self.pm.write_int(address, 1)
+        address += 4
+        self.pm.write_int(address, 4)
+
+    # Sets restrictions for options 0-3 in the list (characters or difficulties)
+    def setMenuRestrict(self, restrict_list: list[bool]) -> None:
+        address = getPointerAddress(self.pm, self.mainMenuPtr, ADDR_MENU_RESTRICT_HEAD_OFFSET)
+        new_value = None
+
+        # Write into the array of restricted values if the option is not available.
+        for i in range(4):
+            new_value = 5
+            if not restrict_list[i]:
+                new_value = i
+            self.pm.write_int(address, new_value)
+            address += 4
+
     '''
     Stage and Card Info
     '''

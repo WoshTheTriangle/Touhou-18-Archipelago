@@ -240,6 +240,13 @@ class GameHandler:
     def getOptionCount(self) -> int:
         return self.gameController.getOptionCount()
 
+    def setDifficultyRestrict(self) -> None:
+        self.gameController.initMenuRestrict()
+        self.gameController.setMenuRestrict(self.difficultiesUnlocked)
+
+    def setCharacterRestrict(self) -> None:
+        self.gameController.initMenuRestrict()
+        self.gameController.setMenuRestrict(self.charactersUnlocked)
 
     '''
     General Getters and Setters

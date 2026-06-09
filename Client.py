@@ -772,7 +772,7 @@ class TouhouUMContext(CommonContext):
         chimata_index = 0
         momoyo_index = 0
         chimata_alt_index = 0
-        card_count_index = 0
+        card_count = 0
 
         chimata_victory = False
         momoyo_victory = False
@@ -806,10 +806,8 @@ class TouhouUMContext(CommonContext):
                 chimata_alt_victory = True
         
         if goal_condition == GOAL_ITEMS or goal_condition == GOAL_ALL:
-            for card in ABILITY_CARD_LIST:
-                if self.handler.hasCardBeenReceived(card):
-                    card_count_index += 1
-            if card_count_index >= cards_needed:
+            card_count = self.handler.get_unlocked_card_count()
+            if card_count >= cards_needed:
                 achieved_victory = True
                 card_count_victory = True
         
@@ -1142,6 +1140,8 @@ class TouhouUMContext(CommonContext):
 
             new_locations = []
 
+            current_menu_state = None
+
             currently_in_menu = False
 
             while not self.exit_event.is_set() and self.handler and not self.in_error:
@@ -1185,6 +1185,10 @@ class TouhouUMContext(CommonContext):
                             if id not in self.previous_location_checked and self.handler.isGoalCompleted(*ending_map):
                                 self.handler.setGoalCompleted(*ending_map)
                                 new_locations.append(id)
+
+                        if self.options["goal"] == GOAL_ITEMS or self.options["goal"] == GOAL_ALL:
+                            if self.options["card_req"] <= self.handler.get_unlocked_card_count():
+                                check_victory()
         
                         # If we actually found something new then send it.
                         if new_locations:
@@ -1196,31 +1200,30 @@ class TouhouUMContext(CommonContext):
                     # General Main Menu Stuff.
                     menu_select_state = self.handler.getMainMenuSelectArea()
                     if menu_select_state == CHARACTER_SELECT:
+
+                        # Lock character options
+                        if current_menu_state != CHARACTER_SELECT:
+                            current_menu_state = CHARACTER_SELECT
+                            self.handler.setCharacterRestrict()
+
                         selected_difficulty = self.handler.getDifficulty()
-
-                        # Selected a character who has not been unlocked yet.
-                        current_character = self.handler.getMainMenuSelect()
-                        if not self.handler.isCharacterUnlocked(current_character):
-                            self.handler.setMainMenuSelect(previous_character)
-                            current_character = previous_character
-
-                        previous_character = current_character
 
                         # Player entered a difficulty they do not have access to, fix it.
                         if not self.handler.isDifficultyUnlocked(selected_difficulty):
                             logger.info(f"""Error: Entered locked difficulty option. Defaulting to {DIFFICULTY_NAMES[default_difficulty]}""")
                             self.handler.setDifficulty(default_difficulty) 
                     elif menu_select_state == DIFFICULTY_SELECT:
-                        if self.handler.getOptionCount() != 1: # 1 is extra select.
-                            current_difficulty = self.handler.getMainMenuSelect()
 
-                            if not self.handler.isDifficultyUnlocked(current_difficulty):
-                                self.handler.setMainMenuSelect(previous_difficulty)
-                                current_difficulty = previous_difficulty
-                            previous_difficulty = current_difficulty
+                        # Lock difficulty options
+                        if current_menu_state != DIFFICULTY_SELECT:
+                            current_menu_state = DIFFICULTY_SELECT
+                            self.handler.setDifficultyRestrict()
+                    else:
+                        if current_menu_state != None:
+                            current_menu_state = None
 
                 elif currently_in_menu:
-                    #logger.info("Left main menu")
+                    current_menu_state = None
                     currently_in_menu = False
 
                     # Since unlock state is a factor in determining whether you've purchased an item card, disable in stage if not purchased.
@@ -1262,18 +1265,10 @@ class TouhouUMContext(CommonContext):
 
                     for item_id in self.game_item_queue:
                         match item_id:
-                            case 6: # To delete
-                                self.handler.addFunds(50)
-                            case 7:
-                                self.handler.addFunds(75)
                             case 8:
                                 self.handler.addFunds(100)
                             case 9:
                                 self.handler.addPower(50)
-                            case 10: # To delete
-                                self.handler.addPower(75)
-                            case 11:
-                                self.handler.addPower(100)
                             # Filler
                             case 400:
                                 self.handler.addFunds(10)
@@ -1424,7 +1419,6 @@ class TouhouUMContext(CommonContext):
 
                     if self.last_funds != current_funds:
                         funds_difference = current_funds - self.last_funds
-                        print(f"Funds changed, changed by {funds_difference}")
                         self.last_funds = current_funds
                         asyncio.create_task(self.send_msgs([{"cmd": "Bounce", "tags": ["RingLink"], "data": {"amount": funds_difference, "source": self.ring_link_id, "time": time.time()}}]))
                 else:
