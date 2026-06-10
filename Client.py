@@ -26,6 +26,10 @@ from .Items import *
 from .variables import stage_constants, card_constants
 from .Tools import *
 
+def get_death_link_message(deathlink_trigger: int = DEATHLINK_TRIGGER_LIFE) -> str:
+    if DEATHLINK_TRIGGER_GAMEOVER: return random.choice(DEATH_LINK_GAMEOVER_MSGS + DEATH_LINK_GENERIC_MSGS)
+    else: return random.choice(DEATH_LINK_LIFE_MSGS + DEATH_LINK_GENERIC_MSGS)
+
 class TouhouUMClientProcessor(ClientCommandProcessor):
     def __init__(self, ctx):
         super().__init__(ctx)
@@ -97,7 +101,7 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
         if trigger is None:
             if self.ctx.deathlink_trigger == DEATHLINK_TRIGGER_LIFE:
                 logger.info("Death Link on Life Loss")
-            elif self.deathlink_trigger == DEATHLINK_TRIGGER_GAMEOVER:
+            elif self.ctx.deathlink_trigger == DEATHLINK_TRIGGER_GAMEOVER:
                 logger.info("Death Link on Game Over")
             else:
                 logger.info("Death Link Condition is Unknown")
@@ -548,8 +552,9 @@ class TouhouUMContext(CommonContext):
         """
         # Don't send anything if deathlink is not enabled.
         if not self.deathlink_enabled: return
-        # TODO put funny quotes for deathlink
-        await self.send_death(self.player_names[self.slot] + "Has died")
+
+        death_link_message = get_death_link_message(self.deathlink_trigger)
+        await self.send_death(f"{self.player_names[self.slot]} {death_link_message}")
 
 
     def on_ringlink(self, data: typing.Dict[str, typing.Any]) -> None:

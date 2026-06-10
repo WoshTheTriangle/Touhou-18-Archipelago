@@ -31,7 +31,9 @@ def generate_regions(world, exclude_lunatic, extra_stage_acquire, split_by_diffi
     init_region = Region("Menu", world.player, world.multiworld)
     region_list.append(init_region)
 
-    card_names = [name for name in NAME_TO_CARD_ID if name not in STAGE_EXCLUSIVE_SHOP_CARDS]
+    special_cards = STAGE_EXCLUSIVE_SHOP_CARDS + EXPENSIVE_CARDS
+
+    card_names = [name for name in NAME_TO_CARD_ID if name not in special_cards]
     card_location_names = [f"Purchased {card_name}" for card_name in card_names]
 
     card_locations = get_location_names_with_ids(card_location_names)
@@ -41,6 +43,12 @@ def generate_regions(world, exclude_lunatic, extra_stage_acquire, split_by_diffi
         region_shop = Region(f"Stage {stage} Shop", world.player, world.multiworld)
         if stage == 1:
             region_shop.add_locations(card_locations, TouhouUMLocation)
+
+        # You can't easily afford these on stage 1 so they are going to be thought of as if they are from stage 2.
+        if stage == 2: 
+            for card_name in EXPENSIVE_CARDS:
+                
+                region_shop.add_locations(get_location_names_with_ids([f"Purchased {card_name}"]), TouhouUMLocation)
 
         if stage == 5:
             region_shop.add_locations(get_location_names_with_ids([f"Purchased {STAGE_EXCLUSIVE_SHOP_CARDS[4]}"])
