@@ -348,9 +348,19 @@ class TouhouUMContext(CommonContext):
         """
         self.handler = None
 
+        # Let the handler know we have already checked these card locations beforehand.
+        card_location_list = []
+        for id in self.previous_location_checked:
+            if "Purchased" in location_id_to_name[id]:
+                card_name = (location_id_to_name[id].split("Purchased "))[1]
+                card_location_list.append(NAME_TO_CARD_ID[card_name])
+                print(f"Names: {card_name}")
+            
+            
+
         while self.handler == None:
             try:
-                self.handler: GameHandler = GameHandler()
+                self.handler: GameHandler = GameHandler(card_location_list)
             except Exception as e:
                 await asyncio.sleep(2)
 
@@ -665,7 +675,6 @@ class TouhouUMContext(CommonContext):
         These items can be processed anywhere at any time. The vast majority of them.
         """
         for item_id in self.permanent_item_queue:
-            
             match item_id:
                 case 1:
                     self.handler.addInitialLives()
@@ -849,6 +858,7 @@ class TouhouUMContext(CommonContext):
 
             current_score = 0
             current_continue = 0
+            previous_stage = 0
             current_stage = 0
             current_character = None
 
@@ -890,8 +900,11 @@ class TouhouUMContext(CommonContext):
                             # Incase the player dies with 0 score, it will still recognize a restart
                             self.handler.setScore(1) 
                             current_character = self.handler.getCurrentCharacter()
-                            if current_stage == 1: self.handler.setContinues(self.handler.continues)
                             given_resources = False
+                            previous_stage = 0
+
+                            if current_stage == 1: self.handler.setContinues(self.handler.continues)
+                            
 
                     # This specific block is for if the player restarts the game or uses a continue.
                     if not given_resources:
@@ -907,9 +920,12 @@ class TouhouUMContext(CommonContext):
 
                     # Allow the game to fully load the stage first.
                     # If the client attempts to force the player back while the stage is loading the game will crash.
-                    if not self.checked_if_owns_stage:
+                    if not self.checked_if_owns_stage and previous_stage != current_stage:
+
                         time_in_stage = self.handler.getTimeInStage()
+                        print(time_in_stage)
                         if time_in_stage >= 120:
+                            previous_stage = current_stage
                             self.checked_if_owns_stage = True
 
                             if current_stage == None or current_character == None:
@@ -977,6 +993,7 @@ class TouhouUMContext(CommonContext):
                     # Check if the player has more bombs than max.
                     new_bombs = self.handler.getBombs()
                     if current_bombs != new_bombs:
+                        print("new bombs")
                         if new_bombs > self.handler.max_bombs:
                             self.handler.setBombs(self.handler.max_bombs)
                         current_bombs = new_bombs
@@ -1048,7 +1065,7 @@ class TouhouUMContext(CommonContext):
                     new_card_list = self.handler.getHeldCards()
 
                     # New possible starting card was purchased.
-                    if new_card_list[-1] != player_card_list[-1]:
+                    if len(new_card_list) != len(player_card_list):
                         if not self.handler.hasCardBeenPurchased(new_card_list[-1]):
                             self.handler.purchaseCard(new_card_list[-1])
                             
@@ -1114,8 +1131,6 @@ class TouhouUMContext(CommonContext):
             logger.error(traceback.format_exc())
             self.in_error = True
 
-    # TODO find a way to make moving around menu options not look ugly
-    # TODO find a way to make it so you can't screw yourself by unlocking Reimu and then Sakuya since you can't get to Sakuya
     async def menu_loop(self):
         """
 		Loop for dealing with main menu stuff.
@@ -1200,14 +1215,15 @@ class TouhouUMContext(CommonContext):
                     # General Main Menu Stuff.
                     menu_select_state = self.handler.getMainMenuSelectArea()
                     if menu_select_state == CHARACTER_SELECT:
+                        selected_difficulty = self.handler.getDifficulty()
 
                         # Lock character options
                         if current_menu_state != CHARACTER_SELECT:
                             current_menu_state = CHARACTER_SELECT
-                            self.handler.setCharacterRestrict()
+                            if selected_difficulty != 4: # Don't lock on extra select
+                                self.handler.setCharacterRestrict()
 
-                        selected_difficulty = self.handler.getDifficulty()
-
+                        
                         # Player entered a difficulty they do not have access to, fix it.
                         if not self.handler.isDifficultyUnlocked(selected_difficulty):
                             logger.info(f"""Error: Entered locked difficulty option. Defaulting to {DIFFICULTY_NAMES[default_difficulty]}""")
@@ -1245,10 +1261,10 @@ class TouhouUMContext(CommonContext):
             freeze_duration = 2
             freeze_timer = 0
 
-            increased_speed_duration = 2
+            increased_speed_duration = 5
             increased_speed_timer = 0
 
-            inverse_speed_duration = 2
+            inverse_speed_duration = 5
             inverse_speed_timer = 0
 
             reduced_damage_duration = 3
@@ -1310,7 +1326,7 @@ class TouhouUMContext(CommonContext):
                 
                     # Since asyncio only stops the coroutine at await, this won't mess with the list while it is being filled.
                     self.game_item_queue = []
-                    
+
                     if freeze_timer == 0:
                         self.handler.resetSpeed()
                     elif increased_speed_timer == 0:
@@ -1500,7 +1516,6 @@ async def game_watcher(ctx):
         client_loops.append(asyncio.create_task(ctx.stage_item_loop()))
         client_loops.append(asyncio.create_task(ctx.death_link_loop()))
         client_loops.append(asyncio.create_task(ctx.ring_link_loop()))
-        # Add more loops later
 
         # Update any locations made before the connection.
 

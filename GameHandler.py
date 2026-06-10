@@ -14,7 +14,7 @@ class GameHandler:
     max_bombs = 0
 
     continues = 0
-    cardSlots = 0
+    cardSlots = 1
 
     latestStageIndex = 0
 
@@ -35,7 +35,7 @@ class GameHandler:
 
     previousLocationChecked = []
 
-    def __init__(self):
+    def __init__(self, card_locations_checked: list[int] = None):
         ''' 
         This class is a wrapper for GameController
         while also storing any saved data about the game
@@ -43,14 +43,14 @@ class GameHandler:
 
         self.gameController = GameController()
         self.reset()
-        self.init_game()
+        self.init_game(card_locations_checked)
 
     def reconnect(self):
         self.gameController = GameController()
         self.init_game(self)
         
     # Change settings within the game to initialize it for Archipelago
-    def init_game(self):
+    def init_game(self, card_locations_checked: list[int] = None):
         for i in range(56):
             self.setCardUnlockState(i, 0)
 
@@ -61,6 +61,10 @@ class GameHandler:
 
         for character in CHARACTERS:
             self.set_extra_stage_unlock(character, False)
+
+        for card_id in card_locations_checked:
+            self.cardsPurchased[card_id] = True
+
 
     def reset(self) -> None:
 
@@ -435,7 +439,8 @@ class GameHandler:
                     for each_character in CHARACTERS:
                         self.stagesUnlocked[each_character][index] = True
                     return
-            index += 1
+                index += 1
+            return
         
         while index < 7:
             if not self.stagesUnlocked[character][index]:
@@ -462,17 +467,17 @@ class GameHandler:
         lives = self.gameController.getLives()
         for i in range(7):
             if i < lives:
-                self.gameController.setGuiState(6 - i, True, True)
+                self.gameController.setGuiState(i, True, True)
             else:
-                self.gameController.setGuiState(6 - i, True, False)
+                self.gameController.setGuiState(i, True, False)
 
     def updateBombsGUI(self) -> None:
         bombs = self.gameController.getBombs()
         for i in range(7):
             if i < bombs:
-                self.gameController.setGuiState(6 - i, False, True)
+                self.gameController.setGuiState(i, False, True)
             else:
-                self.gameController.setGuiState(6 - i, False, False)
+                self.gameController.setGuiState(i, False, False)
 
     def guiExists(self) -> bool:
         return self.gameController.guiExists()
