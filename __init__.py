@@ -46,7 +46,7 @@ class TouhouUMWorld(World):
 
         # Fix conflicting options
         if self.options.extra_stage == EXTRA_NOT_INCLUDED and self.options.goal == GOAL_MOMOYO:
-            self.options.goal = GOAL_CHIMATA
+            self.options.goal.value = GOAL_CHIMATA
 
         if self.options.exclude_lunatic:
             self.push_precollected(self.create_item("Lower Difficulty"))

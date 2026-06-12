@@ -86,6 +86,7 @@ def generate_regions(world, exclude_lunatic, extra_stage_acquire, split_by_diffi
                     stage_region = Region(f"[{difficulty}][{character}] Stage {stage}", world.player, world.multiworld)
                     stage_region.add_locations(get_location_names_with_ids([f"[{difficulty}][{character}] - {check}" 
                                                                             for check in STAGE_CHECKS[stage - 1]]), TouhouUMLocation)
+
                     region_list.append(stage_region)
 
     # We have extra stages enabled.
@@ -114,11 +115,17 @@ def generate_regions(world, exclude_lunatic, extra_stage_acquire, split_by_diffi
 
     # Victory locations (these are fixed)
     
+    # Post victory cards.
+    '''
+    card_location_names = [f"Purchased {card_name}" for card_name in POST_VICTORY_CARDS]
+    card_locations = get_location_names_with_ids(card_location_names)
+    stage_region.add_locations(card_locations, TouhouUMLocation)
+    '''
+
     for character in CHARACTER_NAMES:
         victory_location_name = f"[{character}] Defeated Chimata Ending"
         victory_location = TouhouUMLocation(world.player, victory_location_name, location_table[victory_location_name], stage_region)
         victory_location.place_locked_item(world.create_item(victory_location_name))
-
         stage_region.locations.append(victory_location)
     region_list.append(stage_region)
 
@@ -138,10 +145,12 @@ def generate_regions(world, exclude_lunatic, extra_stage_acquire, split_by_diffi
     blank_and_magatama_location.place_locked_item(world.create_item(BLANK_CARD_NAME))
     stage_region.locations.append(blank_and_magatama_location)
 
-
     blank_and_magatama_location = TouhouUMLocation(world.player, f"Unlocked {MAGATAMA_CARD_NAME}", location_table[f"Unlocked {MAGATAMA_CARD_NAME}"], init_region)
     blank_and_magatama_location.place_locked_item(world.create_item(MAGATAMA_CARD_NAME))
     stage_region.locations.append(blank_and_magatama_location)
+
+    #for location in stage_region.locations:
+    #    print(f"\nAAA {location.item}")
 
     return region_list
 
@@ -191,7 +200,6 @@ def connect_regions(world) -> None:
             for difficulty in DIFFICULTY_NAMES:
                 if exclude_lunatic and difficulty == "Lunatic":
                     continue
-
                 starting_region = menu_region
                 for stage in range(1, 7):
 

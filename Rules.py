@@ -44,7 +44,7 @@ def set_all_entrance_rules(world) -> None:
 
                 stage_rule = Has(character) & (global_unlock_rule | per_character_unlock_rule)
 
-                print(global_unlock_rule)
+                #print(global_unlock_rule)
                 entrance_name = world.get_entrance(f"[{character}] Enter Stage {stage}")
                 world.set_rule(entrance_name, stage_rule)
 
@@ -52,7 +52,9 @@ def set_all_entrance_rules(world) -> None:
         for character in CHARACTER_NAMES:
             lower_difficulty_index = 0
             for difficulty in reversed(DIFFICULTY_NAMES):
-                if exclude_lunatic and difficulty == "Lunatic": continue
+                if exclude_lunatic and difficulty == "Lunatic": 
+                    lower_difficulty_index += 1
+                    continue
                 for stage in range(1, 7):
 
                     # Accessing Each Stage. This is for the Stage Clear Location Checks
@@ -111,7 +113,7 @@ def set_all_entrance_rules(world) -> None:
 
 
 def set_all_location_rules(world) -> None:
-    # Setting the rules for the Sky-Blue Magatama and Blank Card
+    # Setting the rules for the Sky-Blue Magatama, Blank Card, and post-stage 6 character cards
     magatama_requirement = world.options.magatama_req.value
     blank_card_requirement = world.options.blank_card_req.value
     
@@ -122,6 +124,11 @@ def set_all_location_rules(world) -> None:
 
     magatama_card_location = world.get_location(f"Unlocked {MAGATAMA_CARD_NAME}")
     world.set_rule(magatama_card_location, HasFromListUnique(*card_list, count = magatama_requirement))
+
+    for character in CHARACTERS:
+        player_card_location = world.get_location(f"Purchased {POST_VICTORY_CARDS[character]}")
+        world.set_rule(player_card_location, Has(f"[{CHARACTER_NAMES[character]}] Defeated Chimata Ending") 
+                                            | Has(f"[{CHARACTER_NAMES[character]}][Blank Card] Defeated Chimata Ending"))
 
     # Victory Conditions are per character.
     for character in CHARACTER_NAMES:

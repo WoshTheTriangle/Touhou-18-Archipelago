@@ -75,13 +75,13 @@ def create_all_items(world) -> None:
 
         # Adding max lives
         if data.code == 12 and world.options.max_life_item:
-            for i in range(8 - world.options.init_max_lives):
+            for i in range(7 - world.options.init_max_lives):
                 item_pool.append(world.create_item(item))
             continue
             
         # Adding max bombs.
         if data.code == 13 and world.options.max_bomb_item:
-            for i in range(8 - world.options.init_max_bombs):
+            for i in range(7 - world.options.init_max_bombs):
                 item_pool.append(world.create_item(item))
             continue
 
