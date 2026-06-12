@@ -567,7 +567,7 @@ class TouhouUMContext(CommonContext):
             # Ensure that the ring link was not from ourselves.
             if data["source"] != self.ring_link_id:
                 self.handler.addFunds(data["amount"])
-                self.last_funds = self.hander.getFunds()
+                self.last_funds = self.handler.getFunds()
 
     def set_ring_link_tag(self, active: bool):
         """
@@ -928,7 +928,6 @@ class TouhouUMContext(CommonContext):
                     if not self.checked_if_owns_stage and previous_stage != current_stage:
 
                         time_in_stage = self.handler.getTimeInStage()
-                        print(time_in_stage)
                         if time_in_stage >= 120:
                             previous_stage = current_stage
                             self.checked_if_owns_stage = True
@@ -1057,7 +1056,7 @@ class TouhouUMContext(CommonContext):
 
                         # Disabling cards that have been purchased before but are not unlocked.
                         shop_card_list = self.handler.getShopCards()
-                        shop_card_id_list = shop_card_id_to_card_id(self.handler, shop_card_list)
+                        shop_card_id_list = self.handler.shop_card_id_to_card_id(shop_card_list)
                         for i in range(len(shop_card_list)):   
                             if (self.handler.cardsPurchased[shop_card_id_list[i]] 
                             and not self.handler.cardsUnlocked[shop_card_id_list[i]]):
@@ -1144,6 +1143,7 @@ class TouhouUMContext(CommonContext):
         print("Menu Loop Init")
 
         try:
+            MAIN_MENU_SELECT = 1
             DIFFICULTY_SELECT = 5
             CHARACTER_SELECT = 6
 
@@ -1238,7 +1238,11 @@ class TouhouUMContext(CommonContext):
                         # Lock difficulty options
                         if current_menu_state != DIFFICULTY_SELECT:
                             current_menu_state = DIFFICULTY_SELECT
-                            self.handler.setDifficultyRestrict()
+                            self.handler.setDifficultyRestrict()         
+                    elif menu_select_state == MAIN_MENU_SELECT:
+                        if current_menu_state != MAIN_MENU_SELECT:
+                            current_menu_state = MAIN_MENU_SELECT
+                            self.handler.setPracticeRestrict()
                     else:
                         if current_menu_state != None:
                             current_menu_state = None

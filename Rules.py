@@ -20,8 +20,8 @@ def set_all_entrance_rules(world) -> None:
     global_unlock_rule = None
     per_character_unlock_rule = None
 
-    global_stage_unlock = True_() if world.options.stage_unlock == 0 else False_()
-    per_character_unlock = True_() if world.options.stage_unlock == 2 else False_()
+    global_stage_unlock = True_() if world.options.stage_unlock.value == 0 else False_()
+    per_character_unlock = True_() if world.options.stage_unlock.value == 2 else False_()
 
     difficulty_toggle = world.options.difficulty_check
     exclude_lunatic = world.options.exclude_lunatic
@@ -44,10 +44,9 @@ def set_all_entrance_rules(world) -> None:
 
                 stage_rule = Has(character) & (global_unlock_rule | per_character_unlock_rule)
 
+                print(global_unlock_rule)
                 entrance_name = world.get_entrance(f"[{character}] Enter Stage {stage}")
                 world.set_rule(entrance_name, stage_rule)
-    
-    # This is basically just a future note to myself.
 
     if difficulty_toggle:
         for character in CHARACTER_NAMES:

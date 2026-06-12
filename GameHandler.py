@@ -65,6 +65,8 @@ class GameHandler:
         for card_id in card_locations_checked:
             self.cardsPurchased[card_id] = True
 
+        self.clearInitialCards()
+
 
     def reset(self) -> None:
 
@@ -251,6 +253,12 @@ class GameHandler:
     def setCharacterRestrict(self) -> None:
         self.gameController.initMenuRestrict()
         self.gameController.setMenuRestrict(self.charactersUnlocked)
+
+    def setPracticeRestrict(self) -> None:
+        self.gameController.setPracticeRestrict()
+
+    def clearInitialCards(self) -> None:
+        self.gameController.clearInitialCards()
 
     '''
     General Getters and Setters
@@ -485,6 +493,15 @@ class GameHandler:
     '''
     Managing GameHandler variables
     '''
+
+    def shop_card_id_to_card_id(self, shop_card_list: list):
+        base_address = self.gameController.pm.base_address
+        return_list = []
+        for shop_card in shop_card_list:
+            return_list.append(SHOP_CARD_ID_TO_CARD_ID[shop_card - base_address])
+
+        return return_list
+
 
     def hasCardBeenPurchased(self, id: int) -> bool:
         # Account for null card

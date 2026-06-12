@@ -226,6 +226,33 @@ class GameController:
             self.pm.write_int(address, new_value)
             address += 4
 
+    def setPracticeRestrict(self) -> None:
+        extra_disabled = True
+
+        address_size = getPointerAddress(self.pm, self.mainMenuPtr, ADDR_MENU_RESTRICT_SIZE_OFFSET)
+        self.pm.write_int(address_size, 1)
+        address_size += 4
+        if self.pm.read_int(address_size) == 0:
+            print("we have extra")
+            extra_disabled = False
+            self.pm.write_int(address_size, 1)
+        else:
+            self.pm.write_int(address_size, 2)
+
+        address_practice = getPointerAddress(self.pm, self.mainMenuPtr, ADDR_MENU_RESTRICT_HEAD_OFFSET)
+        self.pm.write_int(address_practice, 2)
+
+        if extra_disabled:
+            address_practice += 4
+            self.pm.write_int(address_practice, 1)
+        
+    def clearInitialCards(self) -> None:
+        address = getPointerAddress(self.pm, self.scorefilePtr, ADDR_INITIAL_CARDS_HELD_OFFSET)
+        offset = 0
+        while offset <= 64:
+            self.pm.write_int(address, 0x38383838) 
+            offset += 4
+
     '''
     Stage and Card Info
     '''

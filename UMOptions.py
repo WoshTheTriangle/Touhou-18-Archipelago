@@ -55,7 +55,7 @@ class MagatamaRequirement(Range):
     range_start = 0
     range_end = 52
 
-    default = 0
+    default = 5
 
 class BlankCardRequirement(Range):
     """

@@ -7,6 +7,7 @@ from .WebWorld import TouhouUMWebWorld
 from . import Items, Locations, Regions, Rules, UMOptions
 from .variables.meta_data import *
 from .variables.stage_constants import *
+from .Tools import clamp
 
 from typing import Any
 
@@ -44,13 +45,8 @@ class TouhouUMWorld(World):
         self.push_precollected(self.create_item("Reimu"))
 
         # Fix conflicting options
-        if self.options.extra_stage == EXTRA_NOT_INCLUDED:
-            self.options.magatama_req = clamp(0, 51, self.options.magatama_req)
-            self.options.blank_card_req = clamp(0, 51, self.options.blank_card_req)
-            self.options.card_req = clamp(1, 51, self.options.card_req)
-
-            if self.options.goal == GOAL_MOMOYO:
-                self.options.goal = GOAL_CHIMATA
+        if self.options.extra_stage == EXTRA_NOT_INCLUDED and self.options.goal == GOAL_MOMOYO:
+            self.options.goal = GOAL_CHIMATA
 
         if self.options.exclude_lunatic:
             self.push_precollected(self.create_item("Lower Difficulty"))

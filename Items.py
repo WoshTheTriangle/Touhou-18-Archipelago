@@ -164,11 +164,11 @@ item_table: Dict[str, TouhouUMItemData] = {
     "Sanae" : TouhouUMItemData(CATEGORY_CHARACTER, 103, ItemClassification.progression),
     
     #Stages
-    "Next Stage" : TouhouUMItemData(CATEGORY_STAGE, 200, ItemClassification.progression, 6),
-    "[Reimu] Next Stage" : TouhouUMItemData(CATEGORY_STAGE, 201, ItemClassification.progression, 6),
-    "[Marisa] Next Stage" : TouhouUMItemData(CATEGORY_STAGE, 202, ItemClassification.progression, 6),
-    "[Sakuya] Next Stage" : TouhouUMItemData(CATEGORY_STAGE, 203, ItemClassification.progression, 6),
-    "[Sanae] Next Stage" : TouhouUMItemData(CATEGORY_STAGE, 204, ItemClassification.progression, 6),
+    "Next Stage" : TouhouUMItemData(CATEGORY_STAGE, 200, ItemClassification.progression, 5),
+    "[Reimu] Next Stage" : TouhouUMItemData(CATEGORY_STAGE, 201, ItemClassification.progression, 5),
+    "[Marisa] Next Stage" : TouhouUMItemData(CATEGORY_STAGE, 202, ItemClassification.progression, 5),
+    "[Sakuya] Next Stage" : TouhouUMItemData(CATEGORY_STAGE, 203, ItemClassification.progression, 5),
+    "[Sanae] Next Stage" : TouhouUMItemData(CATEGORY_STAGE, 204, ItemClassification.progression, 5),
     "Extra Stage" : TouhouUMItemData(CATEGORY_STAGE, 205, ItemClassification.progression),
     "[Reimu] Extra Stage" : TouhouUMItemData(CATEGORY_STAGE, 206, ItemClassification.progression),
     "[Marisa] Extra Stage" : TouhouUMItemData(CATEGORY_STAGE, 207, ItemClassification.progression),
