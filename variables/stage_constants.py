@@ -50,6 +50,8 @@ STAGE_CHECKS = [
 
 EXTRA_CHECKS = ["Tsukasa - MidBoss 3", "Momoyo Defeated"]
 
+SPELLCARD_COUNT_PER_STAGE = [8, 12, 12, 12, 16, 24, 13]
+
 STAGE_GLOBAL = 0
 STAGE_PER_CHARACTER = 2
 

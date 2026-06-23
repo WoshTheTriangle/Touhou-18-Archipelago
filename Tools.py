@@ -38,10 +38,6 @@ def getStageLocationMapping(split_by_difficulty: bool):
         if "Stage" in location_name:
             valid_location = True
 
-        # You beat the game.
-        if "Completed" in location_name:
-            valid_location = True
-
         # Extra stage checks
         for check in EXTRA_CHECKS:
             if location_name.endswith(check):

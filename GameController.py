@@ -235,12 +235,16 @@ class GameController:
         if self.pm.read_int(address_size) == 0:
             print("we have extra")
             extra_disabled = False
-            self.pm.write_int(address_size, 1)
+            self.pm.write_int(address_size, 3)
         else:
-            self.pm.write_int(address_size, 2)
+            self.pm.write_int(address_size, 4)
 
         address_practice = getPointerAddress(self.pm, self.mainMenuPtr, ADDR_MENU_RESTRICT_HEAD_OFFSET)
         self.pm.write_int(address_practice, 2)
+        address_practice += 4
+        self.pm.write_int(address_practice, 3)
+        address_practice += 4
+        self.pm.write_int(address_practice, 4)
 
         if extra_disabled:
             address_practice += 4

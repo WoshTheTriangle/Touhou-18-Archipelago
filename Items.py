@@ -85,6 +85,9 @@ def create_all_items(world) -> None:
                 item_pool.append(world.create_item(item))
             continue
 
+        if data.code == 100: # Reimu is pre-given
+            continue
+
         # Global Character Stage Unlocks.
         if data.code == 200 and world.options.stage_unlock == STAGE_GLOBAL:
             # Extra stage is an additional linear next stage.
@@ -281,6 +284,7 @@ for name, data in item_table.items():
         trap_table.setdefault(name, data)
 
 ITEM_ID_TO_CARD_ID: Dict[int, int] = {
+    300: BLANK_CARD,
     301: BOMB_CARD,
     302: LIFE_CARD,
     303: NAZRIN_CARD,

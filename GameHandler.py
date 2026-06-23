@@ -67,6 +67,8 @@ class GameHandler:
 
         self.clearInitialCards()
 
+        #TODO clear spellcard practice cards unlocked
+
 
     def reset(self) -> None:
 
@@ -133,7 +135,6 @@ class GameHandler:
             
         self.stagesUnlocked[character][7] = True
 
-
     def get_game_state(self) -> int:
         if self.gameController.isShopActive():
             return IN_SHOP
@@ -167,8 +168,9 @@ class GameHandler:
         bossBeaten = False
         if difficulty >= 0 and difficulty < 4: # Regular game with difficulties checked
             bossBeaten = self.bossesBeaten[character][difficulty][stage][counter]
-        elif stage == 7: # Extra Stage
+        elif stage == 6: # Extra Stage
             bossBeaten = self.extraBeaten[character][counter]
+            print(f"{character} {counter} - {bossBeaten}")
         elif difficulty == -1: # Regular game without difficulties checked
             for all_difficulties in range(4):
                 bossBeaten = self.bossesBeaten[character][all_difficulties][stage][counter] or bossBeaten
@@ -181,7 +183,7 @@ class GameHandler:
 
         if goal_id == GOAL_CHIMATA:
             for difficulty in range(4):
-                goal_completed = goal_completed or self.bossesBeaten[character][difficulty][6][1]
+                goal_completed = goal_completed or self.bossesBeaten[character][difficulty][5][1]
                 #goal_completed = self.bossesBeaten[character][1]
         elif goal_id == GOAL_MOMOYO:
             goal_completed = self.extraBeaten[character][1]
@@ -208,6 +210,8 @@ class GameHandler:
         current_character = self.gameController.getCurrentCharacter()
         
         if (currentStage == 7):
+            print("extra stage beat thing")
+            print(f"{counter}")
             self.extraBeaten[current_character][counter] = True
         else:
             self.bossesBeaten[current_character][self.getDifficulty()][self.gameController.getStage() - 1][counter] = True
@@ -440,17 +444,17 @@ class GameHandler:
 
     def addStage(self, character: int = -1) -> None:
         index = 1
-
         if character == -1:
-            while index < 7:
-                if not self.stagesUnlocked[CHARACTER_REIMU][index]:
+            while index < 8:
+                if not self.stagesUnlocked[CHARACTER_REIMU][index]: # Reimu is a default character to check.
                     for each_character in CHARACTERS:
                         self.stagesUnlocked[each_character][index] = True
                     return
                 index += 1
+
             return
         
-        while index < 7:
+        while index < 8:
             if not self.stagesUnlocked[character][index]:
                 self.stagesUnlocked[character][index] = True
                 return
@@ -458,12 +462,15 @@ class GameHandler:
 
     def lowerDifficulty(self) -> None:
 
-        index = 3
+        index = 2
         while index >= 0:
             if not self.difficultiesUnlocked[index]:
                 self.difficultiesUnlocked[index] = True
                 return
             index -= 1
+
+    def excludeLunatic(self) -> None:
+        self.difficultiesUnlocked[3] = False
 
     def resetSpeed(self) -> None:
         self.gameController.resetSpeed()

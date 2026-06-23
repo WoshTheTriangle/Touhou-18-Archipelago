@@ -34,17 +34,6 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
     def __init__(self, ctx):
         super().__init__(ctx)
 
-    def _cmd_test(self, reply = None) -> bool:
-        """Commands to the command line"""
-        changed = False
-
-        if reply is not None:
-            text = reply.lower()
-            logger.info(f"{text}")
-            changed = True
-
-        return changed
-
     def _cmd_deathlink(self, new_state: str = None) -> None:
         """
         Toggle Death Link on or off.
@@ -172,6 +161,40 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
 
         logger.info(f"Ring Link status: {self.ctx.ring_link_enabled}")
 
+    def _cmd_cards(self, state: str = None) -> None:
+        """
+        Check what cards you have or have not purchased in your Touhou 18 world.
+        If no argument is given, will default to listing cards that have not been purchased.
+        :param trigger: If "Purchased" or "True" will list cards that have been purchased.
+                        If "Not_Purchased" or "False" will list cards that have not been purchased.
+        """
+        
+        if not self.ctx.is_connected:
+            logger.info("Not connected to the server.")
+            return
+
+        count = 0
+        #TODO make logger compare to total
+        if state == None or state.lower() in ["not_purchased", "false"]:
+            logger.info("Cards Not Purchased:")
+            for id in self.ctx.missing_locations:
+                if "Purchased" in location_id_to_name[id]:
+                    card_name = (location_id_to_name[id].split("Purchased "))[1]
+                    logger.info(card_name)
+                    count += 1
+            logger.info(f"Number of cards not purchased: {count}")
+        elif state.lower() in ["purchased", "true"]:
+            logger.info("Cards Purchased:")
+            for id in self.ctx.previous_location_checked:
+                if "Purchased" in location_id_to_name[id]:
+                    card_name = (location_id_to_name[id].split("Purchased "))[1]
+                    logger.info(card_name)
+                    count += 1
+            logger.info(f"Number of cards purchased: {count}")
+        else:
+            logger.info("Incorrect argument given. Use 'Purchased' or 'Not_Purchased'")
+        
+
             
 class TouhouUMContext(CommonContext):
     """Touhou 18 Game Context"""
@@ -209,8 +232,9 @@ class TouhouUMContext(CommonContext):
         self.magatama_id: int = 0
         self.blank_card_id: int = 0
 
-        self.all_location_ids = []
-        self.previous_location_checked = []
+        self.all_location_ids: list = []
+        self.previous_location_checked: list = []
+
         self.command_processor = TouhouUMClientProcessor
 
         # Gameplay-related variables
@@ -358,7 +382,6 @@ class TouhouUMContext(CommonContext):
             if "Purchased" in location_id_to_name[id]:
                 card_name = (location_id_to_name[id].split("Purchased "))[1]
                 card_location_list.append(NAME_TO_CARD_ID[card_name])
-                print(f"Names: {card_name}")
             
             
 
@@ -397,6 +420,7 @@ class TouhouUMContext(CommonContext):
             self.options = args["slot_data"] #Yaml options
             self.is_connected = True
 
+
             self.slot = args["slot"]
             self.custom_data_keys_list = [f"{str(self.team)}_{str(self.slot)}_LastItemIndexTH18"] 
 
@@ -423,6 +447,7 @@ class TouhouUMContext(CommonContext):
                 self.retrieved_last_item_id = True
                 if not args["keys"][self.custom_data_keys_list[0]] is None:
                     self.last_received_item_index_server = args["keys"][self.custom_data_keys_list[0]]
+                    print(self.last_received_item_index_server)
                 else:
                     self.last_received_item_index_server = -1
 
@@ -452,9 +477,9 @@ class TouhouUMContext(CommonContext):
         # TODO, I don't know if SetReply is the best option for this considering it will send stuff to other players
         # but it's the best idea I had in mind for now so it will be here for now.
         if cmd == "SetReply": # Ensure that the last item index received has been updated.
-            if args["slot"] == self.slot:
+            if args["key"] == self.custom_data_keys_list[0] and args["slot"] == self.slot:
                 self.data_sent = True
-                print("We got stuff")
+                print("Last item received index has been updated.")
 
     async def send_victory(self) -> None:
         await self.send_msgs([{"cmd": 'StatusUpdate', "status": 30}])
@@ -506,34 +531,36 @@ class TouhouUMContext(CommonContext):
         self.location_semaphore_in_use = True
 
         new_locations = []
-        cards_unlocked = 0
 
         # Stage-related Locations
         for id, map in self.stage_location_mappings.items():
             if self.handler.isBossBeaten(*map) and id not in self.previous_location_checked:
+                print("new location")
                 new_locations.append(id)
 
         # New cards purchased
         for id, card_id in self.location_id_to_card_id.items():
+            
             if id not in self.previous_location_checked and self.handler.hasCardBeenPurchased(card_id):
                 new_locations.append(id)
-                cards_unlocked += 1
 
         # Goal check
         for id, ending_map in self.location_id_to_ending_mapping.items():
             if id not in self.previous_location_checked and self.handler.isGoalCompleted(*ending_map):
                 self.handler.setGoalCompleted(*ending_map)
                 new_locations.append(id)
-        
+
+        # TODO make this check upon receiving cards as items.
         # Unlocking Sky-Blue Magatama and Blank Card
-        if self.options["magatama_req"] <= self.handler.get_unlocked_card_count() + cards_unlocked:
+        if self.options["magatama_req"] <= self.handler.get_unlocked_card_count():
             new_locations.append(self.magatama_id)
-        if self.options["blank_card_req"] <= self.handler.get_unlocked_card_count() + cards_unlocked:
+        if self.options["blank_card_req"] <= self.handler.get_unlocked_card_count():
             new_locations.append(self.blank_card_id)
 
         # If there are any new locations, add them to the list and send them to the server.
         if new_locations:
             self.previous_location_checked += new_locations
+                
             await self.send_msgs([{"cmd": 'LocationChecks', "locations": new_locations}])
 
         self.location_semaphore_in_use = False
@@ -597,9 +624,11 @@ class TouhouUMContext(CommonContext):
         new_items_list: list[NetworkItem] = []
 
         # You'd want to be in the game and know the previous last index if you are to receive stuff.
-        while (self.handler is None or self.handler.gameController is None) and not self.retrieved_last_item_id:
-            print("waiting for the game")
+        while (self.handler is None or self.handler.gameController is None) or not self.retrieved_last_item_id:
+            print("waiting for the game and server reply")
             await asyncio.sleep(0.5)
+
+        print(self.retrieved_last_item_id)
 
         # You have no items acquired but have had some in a previous session.
         if (not self.all_received_items or self.all_received_items == []) and self.last_received_item_index_server > 0:
@@ -874,6 +903,8 @@ class TouhouUMContext(CommonContext):
             time_in_stage = 0
             game_state = -1
 
+            initial_loop_buffer = True
+
             while not self.exit_event.is_set() and self.handler and not self.in_error:
                 await asyncio.sleep(0.5)
 
@@ -900,8 +931,13 @@ class TouhouUMContext(CommonContext):
                         
                         self.handler.updateCardLockState()
 
+                        # There is a shop in the middle of the extra stage so we need to account for it.
+                        # If you manage to somehow have less than 100,000 score upon reaching Momoyo, you deserve it.
+                        if current_stage == 7 and current_score > 10000:
+                            boss_counter = 0
                         # New game or extra stage
-                        if current_stage == 1 or current_stage == 7:
+                        elif current_stage == 1 or current_stage == 7:
+                            
                             # Incase the player dies with 0 score, it will still recognize a restart
                             self.handler.setScore(1) 
                             current_character = self.handler.getCurrentCharacter()
@@ -926,6 +962,12 @@ class TouhouUMContext(CommonContext):
                     # Allow the game to fully load the stage first.
                     # If the client attempts to force the player back while the stage is loading the game will crash.
                     if not self.checked_if_owns_stage and previous_stage != current_stage:
+
+                        # The stage updates before the time so we need a slight buffer just in case.
+                        if initial_loop_buffer:
+                            print("need to wait")
+                            initial_loop_buffer = False
+                            await asyncio.sleep(1)
 
                         time_in_stage = self.handler.getTimeInStage()
                         if time_in_stage >= 120:
@@ -960,7 +1002,7 @@ class TouhouUMContext(CommonContext):
                         else:
                             # Player has restarted the game.     
                             currently_in_stage = False
-                            # This one may seem kinda counterintuitive but it is for ringlink to know that you didn't suddenly lose all of your funds.
+                            # This may seem unnecessary but it is for ringlink to know that you didn't suddenly lose all of your funds.
                             self.checked_if_owns_stage = False 
                             continue
                         given_resources = False
@@ -976,7 +1018,9 @@ class TouhouUMContext(CommonContext):
                         if boss_present:
                             # Boss slain.
                             if not self.handler.isBossActive():
+                                print("boss down")
                                 if not self.handler.isCurrentBossDefeated(boss_counter):
+                                    print("new boss down")
                                     self.handler.setCurrentBossDefeated(boss_counter, difficulty_check, lower_difficulty_check)
                                     await self.update_locations_checked()
                                 boss_present = False
@@ -1004,6 +1048,7 @@ class TouhouUMContext(CommonContext):
 
                 # Went to main menu or shop.
                 elif currently_in_stage:
+                    initial_loop_buffer = True
                     currently_in_stage = False
                     self.checked_if_owns_stage = False
 
@@ -1068,6 +1113,7 @@ class TouhouUMContext(CommonContext):
                     currently_in_shop = False
                     new_card_list = self.handler.getHeldCards()
 
+                    # TODO Blank card stuff
                     # New possible starting card was purchased.
                     if len(new_card_list) != len(player_card_list):
                         if not self.handler.hasCardBeenPurchased(new_card_list[-1]):
@@ -1093,8 +1139,10 @@ class TouhouUMContext(CommonContext):
                             self.handler.purchaseCard(LIFE_CARD)
                             if not self.handler.hasCardBeenReceived(LIFE_CARD):
                                 temp_value = self.handler.getLives()
+                                print(temp_value)
                                 temp_value -= 1
                                 self.handler.setLives(temp_value)
+                                print(self.handler.getLives())
                                 self.handler.setCardUnlockState(LIFE_CARD, False) 
 
                         if (not self.handler.hasCardBeenPurchased(BOMB_CARD) 
@@ -1123,10 +1171,13 @@ class TouhouUMContext(CommonContext):
                         if (not self.handler.hasCardBeenPurchased(MOKOU_CARD) 
                         and self.handler.getCardUnlockedState(MOKOU_CARD)):
                             self.handler.purchaseCard(MOKOU_CARD)
-                            if not self.handler.hasCardBeenReceived(MOKOU_CARD):
+                            if not self.handler.hasCardBeenReceived(MOKOU_CARD): #TODO bugged
                                 temp_value = self.handler.getLives()
+                                print(temp_value)
                                 temp_value -= 3
+                                print(temp_value)
                                 self.handler.setLives(temp_value)
+                                print(self.handler.getLives())
                                 self.handler.setCardUnlockState(MOKOU_CARD, False) 
                     
                     await self.update_locations_checked()
@@ -1203,17 +1254,18 @@ class TouhouUMContext(CommonContext):
                         # Extra goal check just in-case that it did not properly register.
                         for id, ending_map in self.location_id_to_ending_mapping.items():
                             if id not in self.previous_location_checked and self.handler.isGoalCompleted(*ending_map):
+                                print("new location!!!")
                                 self.handler.setGoalCompleted(*ending_map)
                                 new_locations.append(id)
 
                         if self.options["goal"] == GOAL_ITEMS or self.options["goal"] == GOAL_ALL:
                             if self.options["card_req"] <= self.handler.get_unlocked_card_count():
-                                check_victory()
+                                self.check_victory()
         
                         # If we actually found something new then send it.
                         if new_locations:
-                            logger.info("Missed something it seems")
-                            logger.info(f"{new_locations}")
+                            print("Missed something it seems")
+                            print(f"{new_locations}")
                             self.previous_location_checked += new_locations
                             await self.send_msgs([{"cmd": 'LocationChecks', "locations": new_locations}])
 
@@ -1482,7 +1534,7 @@ async def game_watcher(ctx):
             # Receive server data
             if not ctx.retrieved_last_item_id:
                 try:
-                    print("Getting stuff from server.")
+                    print("Getting previously collected items from server.")
                     await ctx.get_custom_data_from_server()
                 except:
                     ctx.inError = True
@@ -1541,6 +1593,9 @@ async def game_watcher(ctx):
         if ctx.options["ring_link"]:
             ctx.ring_link_enabled = True
             ctx.set_ring_link_tag(True)
+
+        if ctx.options["exclude_lunatic"]:
+            ctx.handler.excludeLunatic()
 
         # Initial maximum lives and bombs
         ctx.handler.setMaxLives(ctx.options["init_max_lives"])
