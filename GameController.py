@@ -168,11 +168,17 @@ class GameController:
         address = getPointerAddress(self.pm, self.mainMenuPtr, ADDR_MENU_LOCATION_OFFSET)
         return self.pm.read_int(address)
 
-    def check_if_in_game(self) -> bool: #TODO, make it actually anywhere
+    def check_if_in_game(self) -> bool:
         # Technically this only returns true if you are in the main menu,
         # but it would also be really inconvenient if the player connected anywhere
         # else so this will work just fine.
         if self.pm.read_int(self.mainMenuPtr) == 0:
+            return False
+        
+        main_menu_select_area = self.getMainMenuSelectArea()
+
+        if main_menu_select_area == 8 or (main_menu_select_area >= 18 and
+        main_menu_select_area <= 20) or main_menu_select_area == 12:
             return False
         return True
 

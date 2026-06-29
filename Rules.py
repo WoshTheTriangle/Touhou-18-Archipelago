@@ -56,7 +56,6 @@ def set_all_entrance_rules(world) -> None:
                     lower_difficulty_index += 1
                     continue
                 for stage in range(1, 7):
-                    #TODO does not seem to understand the Next Stage count requirement.
                     # Accessing Each Stage. This is for the Stage Clear Location Checks
                     if lower_difficulty_index == 0:
                         entrance_name = world.get_entrance(f"[{character}] Enter Stage {stage}")

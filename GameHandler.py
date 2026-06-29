@@ -170,7 +170,6 @@ class GameHandler:
             bossBeaten = self.bossesBeaten[character][difficulty][stage][counter]
         elif stage == 6: # Extra Stage
             bossBeaten = self.extraBeaten[character][counter]
-            print(f"{character} {counter} - {bossBeaten}")
         elif difficulty == -1: # Regular game without difficulties checked
             for all_difficulties in range(4):
                 bossBeaten = self.bossesBeaten[character][all_difficulties][stage][counter] or bossBeaten
@@ -211,7 +210,6 @@ class GameHandler:
         
         if (currentStage == 7):
             print("extra stage beat thing")
-            print(f"{counter}")
             self.extraBeaten[current_character][counter] = True
         else:
             self.bossesBeaten[current_character][self.getDifficulty()][self.gameController.getStage() - 1][counter] = True
@@ -260,6 +258,8 @@ class GameHandler:
 
     def setPracticeRestrict(self) -> None:
         self.gameController.setPracticeRestrict()
+        if self.getMainMenuSelect() >= 2 and self.getMainMenuSelect() <= 4:
+            self.setMainMenuSelect(0)
 
     def clearInitialCards(self) -> None:
         self.gameController.clearInitialCards()

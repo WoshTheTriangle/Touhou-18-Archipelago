@@ -23,9 +23,6 @@ components.append(Component(
 ))
 
 class TouhouUMWorld(World):
-    """
-    Cool game. Toho roguelike.
-    """
     game = DISPLAY_NAME
 
     web = TouhouUMWebWorld()

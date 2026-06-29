@@ -174,7 +174,6 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
             return
 
         count = 0
-        #TODO make logger compare to total
         if state == None or state.lower() in ["not_purchased", "false"]:
             logger.info("Cards Not Purchased:")
             for id in self.ctx.missing_locations:
@@ -182,7 +181,7 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
                     card_name = (location_id_to_name[id].split("Purchased "))[1]
                     logger.info(card_name)
                     count += 1
-            logger.info(f"Number of cards not purchased: {count}")
+            logger.info(f"Number of cards not purchased: {count}/52")
         elif state.lower() in ["purchased", "true"]:
             logger.info("Cards Purchased:")
             for id in self.ctx.previous_location_checked:
@@ -190,7 +189,7 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
                     card_name = (location_id_to_name[id].split("Purchased "))[1]
                     logger.info(card_name)
                     count += 1
-            logger.info(f"Number of cards purchased: {count}")
+            logger.info(f"Number of cards purchased: {count}/52")
         else:
             logger.info("Incorrect argument given. Use 'Purchased' or 'Not_Purchased'")
         
@@ -528,7 +527,7 @@ class TouhouUMContext(CommonContext):
         """
         All checking required to update locations the player has found.
         """
-        self.location_semaphore_in_use = True
+        #self.location_semaphore_in_use = True
 
         new_locations = []
 
@@ -550,20 +549,36 @@ class TouhouUMContext(CommonContext):
                 self.handler.setGoalCompleted(*ending_map)
                 new_locations.append(id)
 
-        # TODO make this check upon receiving cards as items.
-        # Unlocking Sky-Blue Magatama and Blank Card
-        if self.options["magatama_req"] <= self.handler.get_unlocked_card_count():
-            new_locations.append(self.magatama_id)
-        if self.options["blank_card_req"] <= self.handler.get_unlocked_card_count():
-            new_locations.append(self.blank_card_id)
-
         # If there are any new locations, add them to the list and send them to the server.
         if new_locations:
             self.previous_location_checked += new_locations
                 
             await self.send_msgs([{"cmd": 'LocationChecks', "locations": new_locations}])
 
-        self.location_semaphore_in_use = False
+        #self.location_semaphore_in_use = False
+
+    async def update_magatama_and_blank_card(self):
+        """
+        Upon receiving items, we check if the new card count allows for the Sky-Blue Magatama or Blank Card
+        to be unlocked.
+        """
+        #self.location_semaphore_in_use = True
+        new_locations = []
+
+        if (self.magatama_id not in self.previous_location_checked and 
+            self.options["magatama_req"] <= self.handler.get_unlocked_card_count()):
+            new_locations.append(self.magatama_id)
+
+        if (self.blank_card_id not in self.previous_location_checked and
+            self.options["blank_card_req"] <= self.handler.get_unlocked_card_count()):
+            new_locations.append(self.blank_card_id)
+
+        if new_locations:
+            self.previous_location_checked += new_locations
+            await self.send_msgs([{"cmd": 'LocationChecks', "locations": new_locations}])
+
+        #self.location_semaphore_in_use = False
+
 
     def on_deathlink(self, data: typing.Dict[str, typing.Any]) -> None:
         """
@@ -628,8 +643,6 @@ class TouhouUMContext(CommonContext):
             print("waiting for the game and server reply")
             await asyncio.sleep(0.5)
 
-        print(self.retrieved_last_item_id)
-
         # You have no items acquired but have had some in a previous session.
         if (not self.all_received_items or self.all_received_items == []) and self.last_received_item_index_server > 0:
             local_list_length = self.last_received_item_index_server
@@ -657,6 +670,13 @@ class TouhouUMContext(CommonContext):
         if len(new_items_list) <= 0: return
 
         self.handle_items(new_items_list, network_index)
+
+        # Check for Magatama and Blank Card
+        '''
+        while (self.location_semaphore_in_use):
+            await asyncio.sleep(0.5)
+        '''
+        await self.update_magatama_and_blank_card()
 
         # Update last used index.
         await self.add_to_item_list(new_items_list)
@@ -1071,11 +1091,16 @@ class TouhouUMContext(CommonContext):
             currently_in_shop = False
             current_power = 0
 
+            blank_card_state = False
+
             shop_card_list = []
             shop_card_id_list = []
             player_card_list = []
             
             new_card_list = []
+
+            player_lives = 0
+            player_bombs = 0
 
             game_state = -1
 
@@ -1095,9 +1120,15 @@ class TouhouUMContext(CommonContext):
                     if not currently_in_shop:
                         
                         current_power = self.handler.getPower()
+                        player_lives = self.handler.getLives()
+                        player_bombs = self.handler.getBombs()
+
                         currently_in_shop = True
                         #logger.info("Entered a shop")
                         player_card_list = self.handler.getHeldCards()
+
+                        if BLANK_CARD in player_card_list:
+                            blank_card_state = True
 
                         # Disabling cards that have been purchased before but are not unlocked.
                         shop_card_list = self.handler.getShopCards()
@@ -1113,9 +1144,20 @@ class TouhouUMContext(CommonContext):
                     currently_in_shop = False
                     new_card_list = self.handler.getHeldCards()
 
-                    # TODO Blank card stuff
-                    # New possible starting card was purchased.
-                    if len(new_card_list) != len(player_card_list):
+                    # Undo the effects of Phoenix's Tail if you do not have it received.
+                    if MOKOU_CARD in new_card_list:
+                        if not self.handler.hasCardBeenReceived(MOKOU_CARD):
+                            self.handler.setLives(player_lives)
+                            self.handler.setCardUnlockState(MOKOU_CARD, False) 
+
+                    if blank_card_state: # Owned Blank Card
+                        for card in new_card_list:
+                            if not self.handler.hasCardBeenPurchased(card):
+                                self.handler.purchaseCard(card)
+
+                            if not self.handler.hasCardBeenReceived(card):
+                                self.handler.setCardUnlockState(card, False)
+                    elif len(new_card_list) != len(player_card_list): # Didn't own blank card but got a new card.
                         if not self.handler.hasCardBeenPurchased(new_card_list[-1]):
                             self.handler.purchaseCard(new_card_list[-1])
                             
@@ -1138,20 +1180,14 @@ class TouhouUMContext(CommonContext):
                         and self.handler.getCardUnlockedState(LIFE_CARD)): 
                             self.handler.purchaseCard(LIFE_CARD)
                             if not self.handler.hasCardBeenReceived(LIFE_CARD):
-                                temp_value = self.handler.getLives()
-                                print(temp_value)
-                                temp_value -= 1
-                                self.handler.setLives(temp_value)
-                                print(self.handler.getLives())
+                                self.handler.setLives(player_lives)
                                 self.handler.setCardUnlockState(LIFE_CARD, False) 
 
                         if (not self.handler.hasCardBeenPurchased(BOMB_CARD) 
                         and self.handler.getCardUnlockedState(BOMB_CARD)): 
                             self.handler.purchaseCard(BOMB_CARD)
                             if not self.handler.hasCardBeenReceived(BOMB_CARD):
-                                temp_value = self.handler.getBombs()
-                                temp_value -= 1
-                                self.handler.setBombs(temp_value)
+                                self.handler.setBombs(player_bombs)
                                 self.handler.setCardUnlockState(BOMB_CARD, False) 
 
                         if (not self.handler.hasCardBeenPurchased(NAZRIN_CARD) 
@@ -1167,20 +1203,10 @@ class TouhouUMContext(CommonContext):
                             if not self.handler.hasCardBeenReceived(RINGO_CARD):
                                 self.handler.setPower(current_power)
                                 self.handler.setCardUnlockState(RINGO_CARD, False) 
-
-                        if (not self.handler.hasCardBeenPurchased(MOKOU_CARD) 
-                        and self.handler.getCardUnlockedState(MOKOU_CARD)):
-                            self.handler.purchaseCard(MOKOU_CARD)
-                            if not self.handler.hasCardBeenReceived(MOKOU_CARD): #TODO bugged
-                                temp_value = self.handler.getLives()
-                                print(temp_value)
-                                temp_value -= 3
-                                print(temp_value)
-                                self.handler.setLives(temp_value)
-                                print(self.handler.getLives())
-                                self.handler.setCardUnlockState(MOKOU_CARD, False) 
                     
                     await self.update_locations_checked()
+
+                    blank_card_state = False
         except Exception as e:
             logger.error(f"Shop ERROR: {e}")
             logger.error(traceback.format_exc())
@@ -1247,9 +1273,11 @@ class TouhouUMContext(CommonContext):
                         '''   
                         # We shouldn't check locations until they are all already added to the list.
                         # That could be some scary read-write issues.
+                        '''
                         while(self.location_semaphore_in_use):
                             print("Location semaphore in use")
                             await asyncio.sleep(0.5)
+                        '''
 
                         # Extra goal check just in-case that it did not properly register.
                         for id, ending_map in self.location_id_to_ending_mapping.items():
