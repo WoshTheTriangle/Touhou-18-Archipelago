@@ -718,6 +718,8 @@ class TouhouUMContext(CommonContext):
                 self.handler.setCardUnlockState(card_id, True)
             
             self.handler.add_to_unlocked_card_count()
+
+            self.handler.setCardIcon(card_id)
             
         self.card_item_queue = []
 

@@ -67,6 +67,8 @@ class GameHandler:
 
         self.clearInitialCards()
 
+        self.setInitialIconsBlank()
+
         #TODO clear spellcard practice cards unlocked
 
 
@@ -263,6 +265,9 @@ class GameHandler:
 
     def clearInitialCards(self) -> None:
         self.gameController.clearInitialCards()
+
+    def setInitialIconsBlank(self) -> None:
+        self.gameController.setInitialIconsBlank()
 
     '''
     General Getters and Setters
@@ -528,6 +533,9 @@ class GameHandler:
         if id == 56: return
 
         self.cardsUnlocked[id] = True
+
+    def setCardIcon(self, id: int) -> None:
+        self.gameController.setCardIcon(id)
 
     def isStageUnlocked(self, character: int, stage_num: int) -> bool:
         return self.stagesUnlocked[character][stage_num]

@@ -35,7 +35,7 @@ class ExtraStage(Choice):
     Linear: Extra Stage is acquired as the 7th progressive stage.
     Apart: Extra Stage progressions are normal items to be unlocked.
     Not Included: Extra Stage progressions are unobtainable and no locations are locked behind Extra Stage.
-                  This also removes Gluttenous Centipede from the item pool, making all card ranges have an end of 51.
+                  This also removes Gluttonous Centipede from the item pool, making all card ranges have an end of 51.
     """
     display_name = "Include Extra Stage"
 

@@ -5,7 +5,7 @@ This is an implementation of Touhou 18 for [Archipelago](https://github.com/Arch
 ## What to Expect
 This randomizer starts you off with only Reimu with only access to Stage 1 Lunatic with no resources. As you progress throughout the randomizer you will gain access to new stages, characters, and resources to make progression easier.
 
-Cards are seperated by purchasing and unlocking. When you purchase a card in a shop, it is sent as a location but is not available to be used until received as an item in which case it can then be purchased or equipped as an initial card.
+Cards are separated by purchasing and unlocking. When you purchase a card in a shop, it is sent as a location but will not be active until received as an item in which case it can then be purchased or equipped as an initial card and act normally.
 
 Blank Card and Sky-Blue Magatama are acquired after unlocking a certain number of cards decided via options. 
 The Sky-Blue Magatama is required to access extra stage on top of the extra stage unlock.
@@ -51,4 +51,4 @@ When you see "Beginning Main Loops" the client has successfully connected to the
 
 ## Troubleshooting
 
-If any issues arise that need attention or if you want to report any bugs, send a message in [Archipelago Thread](https://discord.com/channels/731205301247803413/1255643294445076541) which can be found at "Touhou 18 ~ Unconnected Marketeers" in #future-game-design in the Archipelago Discord server.
+If any issues arise that need attention or if you want to report any bugs, send a message in the [Archipelago Thread](https://discord.com/channels/731205301247803413/1255643294445076541) which can be found at "Touhou 18 ~ Unconnected Marketeers" in #future-game-design in the Archipelago Discord server.
