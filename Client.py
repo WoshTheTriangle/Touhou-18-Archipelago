@@ -960,6 +960,8 @@ class TouhouUMContext(CommonContext):
                         # New game or extra stage
                         elif current_stage == 1 or current_stage == 7:
                             
+                            self.handler.setGameCardUnlockStates()
+
                             # Incase the player dies with 0 score, it will still recognize a restart
                             self.handler.setScore(1) 
                             current_character = self.handler.getCurrentCharacter()
@@ -1259,8 +1261,7 @@ class TouhouUMContext(CommonContext):
 
                         # If a card has been received, make it show in the main menu.
                         # Also locks cards that you have in your inventory despite not being given to you.
-                        for item_card in ITEM_CARDS:
-                            self.handler.setCardUnlockState(item_card, self.handler.hasCardBeenReceived(item_card))
+                        self.handler.setDefaultCardUnlockStates()
 
                         # Set extra stage for every character depending on whether you have them unlocked or not.
                         # You also need the Sky-Blue Magatama.

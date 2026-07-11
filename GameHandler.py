@@ -379,6 +379,20 @@ class GameHandler:
         if new_state: new_val = 1
         self.gameController.setCardUnlockState(id, new_val)
 
+    def setGameCardUnlockStates(self) -> None:
+        '''
+        This is to make it so all cards that have not been purchased have the "New!" icon above them.
+        '''
+        for i in range(56):
+            self.gameController.setCardUnlockState(i, self.cardsPurchased[i])
+
+    def setDefaultCardUnlockStates(self) -> None:
+        '''
+        Return the card unlock states back to normal in menus.
+        '''
+        for i in range(56):
+            self.gameController.setCardUnlockState(i, self.cardsUnlocked[i])
+
     def getAchievementState(self, id: int) -> bool:
         return self.gameController.getAchievementState(id)
 

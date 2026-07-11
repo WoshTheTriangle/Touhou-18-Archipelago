@@ -42,7 +42,6 @@ class GameController:
         self.menuStatePtr = self.pm.base_address + ADDR_MENU_STATE
         self.guiPtr = self.pm.base_address + ADDR_GUI_PTR
 
-        self.blankIcon = self.pm.base_address + BLANK_CARD_SMALL_ICON
         self.cardIconHead = self.pm.base_address + CARD_SMALL_ICON_HEAD
         
 
@@ -267,15 +266,14 @@ class GameController:
             offset += 4
 
     def setInitialIconsBlank(self) -> None:
-        #address_blank = self.blankIcon
-        #self.pm.write_int(address_blank, CARD_ID_TO_ICON_NUM[NULL])
-
         for i in range(0, 50):
+            if i >= 1 and i <= 4: continue # Life and bomb cards can stay.
+
             address = self.cardIconHead + (0x34 * i)
             self.pm.write_int(address, CARD_ID_TO_ICON_NUM[NULL_CARD])
 
     def setCardIcon(self, id: int) -> None:
-        address = self.blankIcon + (CARD_ID_TO_ICON_SPOT[id] * 0x34)
+        address = self.cardIconHead + (CARD_ID_TO_ICON_SPOT[id] * 0x34)
         self.pm.write_int(address, CARD_ID_TO_ICON_NUM[id])
 
     '''
