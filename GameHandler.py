@@ -572,6 +572,9 @@ class GameHandler:
     def get_unlocked_card_count(self) -> int:
         return self.unlocked_card_count
 
+    def setCardID(self, cardPtr: int, newVal: int) -> None:
+        self.gameController.setCardID(cardPtr, newVal)
+
     '''
     Shop Settings
     '''
@@ -584,7 +587,7 @@ class GameHandler:
         for i in range(len(card_addresses)):
             # Null Card
             if card_ids[i] == 56: continue
-
+            
             if(self.cardsUnlocked[card_ids[i]] == False):
                 self.gameController.disableCard(card_addresses[i])
                 print("DENIED")

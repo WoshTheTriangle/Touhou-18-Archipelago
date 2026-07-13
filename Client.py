@@ -1147,6 +1147,7 @@ class TouhouUMContext(CommonContext):
                     #logger.info("Left a shop")
                     currently_in_shop = False
                     new_card_list = self.handler.getHeldCards()
+                    card_addresses = self.handler.getCardAddresses()
 
                     # Undo the effects of Phoenix's Tail if you do not have it received.
                     if MOKOU_CARD in new_card_list:
@@ -1207,6 +1208,16 @@ class TouhouUMContext(CommonContext):
                             if not self.handler.hasCardBeenReceived(RINGO_CARD):
                                 self.handler.setPower(current_power)
                                 self.handler.setCardUnlockState(RINGO_CARD, False) 
+
+                    # Sannyo's card is weird in the fact that it's effect is only active if you have a card of its ID
+                    # when you start a stage. To account for this, we have to change it before the stage starts.
+                    # I chose the life card since it cannot be owned as a permanent card so this wouldn't make
+                    # a card you have on you into a Dragon Pipe.
+                    for i in range(len(new_card_list)):
+                        if new_card_list[i] == SANNYO_CARD and not self.handler.hasCardBeenReceived(SANNYO_CARD):
+                            self.handler.setCardID(card_addresses[i], LIFE_CARD)
+                        elif new_card_list[i] == LIFE_CARD and self.handler.hasCardBeenReceived(SANNYO_CARD):
+                            self.handler.setCardID(card_addresses[i], SANNYO_CARD)
                     
                     await self.update_locations_checked()
 

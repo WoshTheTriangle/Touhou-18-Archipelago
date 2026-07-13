@@ -195,7 +195,9 @@ class GameController:
 
     def setCardSlotCount(self, value: int) -> None:
         address = getPointerAddress(self.pm, self.scorefilePtr, ADDR_CARD_SLOTS_OFFSET)
-        self.pm.write_int(address, value)
+        for i in range(4):
+            self.pm.write_int(address, value)
+            address += 4
 
     # Unlocks or locks extra stage for a character chosen.
     def setExtraStageUnlock(self, character: int, lock_status: bool) -> None:
@@ -267,7 +269,7 @@ class GameController:
 
     def setInitialIconsBlank(self) -> None:
         for i in range(0, 50):
-            if i >= 1 and i <= 4: continue # Life and bomb cards can stay.
+            if i >= 1 and i <= 6: continue # Item cards can stay.
 
             address = self.cardIconHead + (0x34 * i)
             self.pm.write_int(address, CARD_ID_TO_ICON_NUM[NULL_CARD])
@@ -342,6 +344,10 @@ class GameController:
             card_id_list.append(self.pm.read_int(id_address))
 
         return card_id_list
+
+    def setCardID(self, cardPtr: int, newVal: int) -> None:
+        address = self.pm.read_int(cardPtr)
+        self.pm.write_int(address + 4, newVal)
 
     # Puts the null vtable in the vtable for a card, essentially disabling it.
     def disableCard(self, cardPtr: int) -> None:
