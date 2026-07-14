@@ -70,6 +70,10 @@ class GameHandler:
         self.setInitialIconsBlank()
 
         #TODO clear spellcard practice cards unlocked
+        self.disableAllSpellCards()
+
+        # Enable stage 1 spellcard practice
+        self.enableSpellCards(0, 8)
 
 
     def reset(self) -> None:
@@ -130,6 +134,10 @@ class GameHandler:
         self.charactersUnlocked[character] = True
 
     def unlock_extra(self, character: int = -1) -> None:
+        spellcard_floor = 97 - SPELLCARD_COUNT_PER_STAGE[7]
+        spellcard_ceiling = 97
+        self.enableSpellCards(spellcard_floor, spellcard_ceiling)
+
         if character == -1:
             for each_character in CHARACTERS:
                 self.stagesUnlocked[each_character][7] = True
@@ -238,6 +246,12 @@ class GameHandler:
         value = clamp(0, 3, value)
         return self.gameController.setMainMenuSelect(value)
 
+    def disableAllSpellCards(self) -> None:
+        self.gameController.disableAllSpellCards()
+
+    def enableSpellCards(self, floor: int, ceiling: int) -> None:
+        self.gameController.enableSpellCards(floor, ceiling)
+
     # Force the player back to the main menu from anywhere.
     def forceToMainMenu(self) -> None:
         print("Force A")
@@ -262,6 +276,11 @@ class GameHandler:
         self.gameController.setPracticeRestrict()
         if self.getMainMenuSelect() >= 2 and self.getMainMenuSelect() <= 4:
             self.setMainMenuSelect(0)
+
+    def setSpellCardPracticeRestrict(self) -> None:
+        restrict_list = [self.charactersUnlocked[CHARACTER_REIMU],self.charactersUnlocked[CHARACTER_MARISA],
+                        self.charactersUnlocked[CHARACTER_SAKUYA], self.charactersUnlocked[CHARACTER_SANAE]]
+        self.gameController.setSpellCardPracticeRestrict(restrict_list)
 
     def clearInitialCards(self) -> None:
         self.gameController.clearInitialCards()
@@ -463,9 +482,19 @@ class GameHandler:
 
     def addStage(self, character: int = -1) -> None:
         index = 1
+        spellcard_floor = 0
+        spellcard_ceiling = 0
+
         if character == -1:
             while index < 8:
                 if not self.stagesUnlocked[CHARACTER_REIMU][index]: # Reimu is a default character to check.
+
+                    for i in range(index):     
+                        spellcard_floor += SPELLCARD_COUNT_PER_STAGE[i]
+
+                    spellcard_ceiling = spellcard_floor + SPELLCARD_COUNT_PER_STAGE[index]
+                    self.enableSpellCards(spellcard_floor, spellcard_ceiling)
+
                     for each_character in CHARACTERS:
                         self.stagesUnlocked[each_character][index] = True
                     return
@@ -475,6 +504,12 @@ class GameHandler:
         
         while index < 8:
             if not self.stagesUnlocked[character][index]:
+                for i in range(index):
+                    spellcard_floor += SPELLCARD_COUNT_PER_STAGE[i]
+                spellcard_ceiling = spellcard_floor + SPELLCARD_COUNT_PER_STAGE[index]
+                
+                self.enableSpellCards(spellcard_floor, spellcard_ceiling)
+
                 self.stagesUnlocked[character][index] = True
                 return
             index += 1
@@ -571,6 +606,9 @@ class GameHandler:
 
     def get_unlocked_card_count(self) -> int:
         return self.unlocked_card_count
+
+    def get_game_mode(self) -> int:
+        return self.gameController.getGameMode()
 
     def setCardID(self, cardPtr: int, newVal: int) -> None:
         self.gameController.setCardID(cardPtr, newVal)

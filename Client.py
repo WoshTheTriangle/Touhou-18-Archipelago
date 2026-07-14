@@ -921,6 +921,8 @@ class TouhouUMContext(CommonContext):
             currently_in_stage = True
 
             impossible_state = False
+            spell_practice = False
+            game_mode = None
 
             time_in_stage = 0
             game_state = -1
@@ -929,7 +931,6 @@ class TouhouUMContext(CommonContext):
 
             while not self.exit_event.is_set() and self.handler and not self.in_error:
                 await asyncio.sleep(0.5)
-
                 game_state = self.handler.get_game_state()
 
                 if game_state == -1:
@@ -939,10 +940,16 @@ class TouhouUMContext(CommonContext):
                 # reset itself every stage because the shop is its own state.
                 # self.able_to_check is going to be moderated by the menu and shop loops
                 if game_state == IN_STAGE and self.able_to_check:
-
                     # The games have begun.
                     # Started a new game or entered a new stage.
                     if not currently_in_stage:
+
+                        # Spellcard practice
+                        game_mode = self.handler.get_game_mode()
+                        if game_mode == 32 or game_mode == 36: # I don't know why ZUN chose these numbers in specific.
+                            await asyncio.sleep(2)
+                            continue
+
                         currently_in_stage = True
                         boss_counter = -1
                         boss_present = False
@@ -983,6 +990,7 @@ class TouhouUMContext(CommonContext):
                         
                         current_lives = self.handler.getLives()
 
+                    
                     # Allow the game to fully load the stage first.
                     # If the client attempts to force the player back while the stage is loading the game will crash.
                     if not self.checked_if_owns_stage and previous_stage != current_stage:
@@ -1238,6 +1246,8 @@ class TouhouUMContext(CommonContext):
             MAIN_MENU_SELECT = 1
             DIFFICULTY_SELECT = 5
             CHARACTER_SELECT = 6
+            SPELLCARD_PRACTICE_SELECT = 18
+            SPELLCARD_PRACTICE2_SELECT = 19
 
             game_state = -1
             menu_select_state = None
@@ -1313,6 +1323,7 @@ class TouhouUMContext(CommonContext):
 
                     # General Main Menu Stuff.
                     menu_select_state = self.handler.getMainMenuSelectArea()
+
                     if menu_select_state == CHARACTER_SELECT:
                         selected_difficulty = self.handler.getDifficulty()
 
@@ -1337,6 +1348,10 @@ class TouhouUMContext(CommonContext):
                         if current_menu_state != MAIN_MENU_SELECT:
                             current_menu_state = MAIN_MENU_SELECT
                             self.handler.setPracticeRestrict()
+                    elif menu_select_state == SPELLCARD_PRACTICE_SELECT or menu_select_state == SPELLCARD_PRACTICE2_SELECT:
+                        if current_menu_state != SPELLCARD_PRACTICE_SELECT:
+                            current_menu_state = SPELLCARD_PRACTICE_SELECT
+                            self.handler.setSpellCardPracticeRestrict()
                     else:
                         if current_menu_state != None:
                             current_menu_state = None

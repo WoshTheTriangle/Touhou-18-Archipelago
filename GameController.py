@@ -42,6 +42,8 @@ class GameController:
         self.menuStatePtr = self.pm.base_address + ADDR_MENU_STATE
         self.guiPtr = self.pm.base_address + ADDR_GUI_PTR
 
+        self.gameModePtr = self.pm.base_address + ADDR_GAME_MODE
+
         self.cardIconHead = self.pm.base_address + CARD_SMALL_ICON_HEAD
         
 
@@ -125,6 +127,9 @@ class GameController:
     def getCurrentCharacter(self) -> int:
         return self.pm.read_int(self.addrCharacter)
 
+    def getGameMode(self) -> int:
+        return self.pm.read_int(self.gameModePtr)
+
     def getContinues(self) -> int:
         return self.pm.read_int(self.addrContinues)
 
@@ -169,6 +174,20 @@ class GameController:
     def getMainMenuSelectArea(self) -> int:
         address = getPointerAddress(self.pm, self.mainMenuPtr, ADDR_MENU_LOCATION_OFFSET)
         return self.pm.read_int(address)
+
+    def disableAllSpellCards(self) -> None:
+        address = getPointerAddress(self.pm, self.scorefilePtr, [0x4CD60])
+        for i in range(97):
+            self.pm.write_int(address, 0)
+            address += 0xDC
+
+    def enableSpellCards(self, floor: int, ceiling: int) -> None:
+        address = getPointerAddress(self.pm, self.scorefilePtr, [0x4CD60])
+        address += (0xDC * floor)
+        
+        for i in range(ceiling - floor):
+            self.pm.write_int(address, 1)
+            address += 0xDC
 
     def check_if_in_game(self) -> bool:
         # Technically this only returns true if you are in the main menu,
@@ -236,6 +255,21 @@ class GameController:
             self.pm.write_int(address, new_value)
             address += 4
 
+    # Sets restrictions for the characters in spellcard practice.
+    def setSpellCardPracticeRestrict(self, restrict_list: list[bool]) -> None:
+        address = getPointerAddress(self.pm, self.mainMenuPtr, ADDR_SPELLCARD_PRACTICE_CHAR_SELECT)
+
+        restrict_address = address + 68
+        self.pm.write_int(restrict_address, 4)
+        
+        new_value = None
+        for i in range(4):
+            new_value = 5
+            if not restrict_list[i]:
+                new_value = i
+            self.pm.write_int(address, new_value)
+            address += 4
+
     def setPracticeRestrict(self) -> None:
         extra_disabled = True
 
@@ -245,15 +279,15 @@ class GameController:
         if self.pm.read_int(address_size) == 0:
             print("we have extra")
             extra_disabled = False
-            self.pm.write_int(address_size, 3)
+            self.pm.write_int(address_size, 2)
         else:
-            self.pm.write_int(address_size, 4)
+            self.pm.write_int(address_size, 3)
 
         address_practice = getPointerAddress(self.pm, self.mainMenuPtr, ADDR_MENU_RESTRICT_HEAD_OFFSET)
         self.pm.write_int(address_practice, 2)
         address_practice += 4
-        self.pm.write_int(address_practice, 3)
-        address_practice += 4
+        #self.pm.write_int(address_practice, 3)
+        #address_practice += 4
         self.pm.write_int(address_practice, 4)
 
         if extra_disabled:
