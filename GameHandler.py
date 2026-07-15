@@ -69,7 +69,6 @@ class GameHandler:
 
         self.setInitialIconsBlank()
 
-        #TODO clear spellcard practice cards unlocked
         self.disableAllSpellCards()
 
         # Enable stage 1 spellcard practice
@@ -281,6 +280,9 @@ class GameHandler:
         restrict_list = [self.charactersUnlocked[CHARACTER_REIMU],self.charactersUnlocked[CHARACTER_MARISA],
                         self.charactersUnlocked[CHARACTER_SAKUYA], self.charactersUnlocked[CHARACTER_SANAE]]
         self.gameController.setSpellCardPracticeRestrict(restrict_list)
+
+    def setSpellCardPracticeDifficultyRestrict(self) -> None:
+        self.gameController.setSpellCardPracticeDifficultyRestrict(self.difficultiesUnlocked)
 
     def clearInitialCards(self) -> None:
         self.gameController.clearInitialCards()
@@ -587,6 +589,8 @@ class GameHandler:
         self.gameController.setCardIcon(id)
 
     def isStageUnlocked(self, character: int, stage_num: int) -> bool:
+        print(f"{character} {stage_num}")
+        print(self.stagesUnlocked[character][stage_num])
         return self.stagesUnlocked[character][stage_num]
 
     def isDifficultyUnlocked(self, difficulty: int) -> bool:

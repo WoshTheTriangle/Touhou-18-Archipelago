@@ -946,7 +946,9 @@ class TouhouUMContext(CommonContext):
 
                         # Spellcard practice
                         game_mode = self.handler.get_game_mode()
-                        if game_mode == 32 or game_mode == 36: # I don't know why ZUN chose these numbers in specific.
+                        # I don't know why ZUN chose these numbers in specific.
+                        # This ignores checks (and kicking the player out) on spellcard practice and the demos.
+                        if game_mode == 32 or game_mode == 36 or game_mode == 64: 
                             await asyncio.sleep(2)
                             continue
 
@@ -957,6 +959,17 @@ class TouhouUMContext(CommonContext):
                         current_score = self.handler.getScore()
                         current_continue = self.handler.getContinues()
                         current_stage = self.handler.getStage()
+
+                        # There is dialogue at the end of stage 5 so we need to wait until that is over and stage 6 has begun.
+                        while current_stage == 5 and self.handler.getTimeInStage() > 2000:
+                            await asyncio.sleep(1)
+                        if current_stage == 5:
+                            await asyncio.sleep(1.5)
+                            current_stage = self.handler.getStage()
+
+                        # The client will crash since it changes stages in code before loading in the GUI so we wait.
+                        if current_stage == 6:
+                            await asyncio.sleep(2)
                         
                         self.handler.updateCardLockState()
 
@@ -994,6 +1007,7 @@ class TouhouUMContext(CommonContext):
                     # Allow the game to fully load the stage first.
                     # If the client attempts to force the player back while the stage is loading the game will crash.
                     if not self.checked_if_owns_stage and previous_stage != current_stage:
+                        print("h")
 
                         # The stage updates before the time so we need a slight buffer just in case.
                         if initial_loop_buffer:
@@ -1062,6 +1076,7 @@ class TouhouUMContext(CommonContext):
                     if current_lives != new_lives:
                         if new_lives > self.handler.max_lives:
                             self.handler.setLives(self.handler.max_lives)
+                            new_lives = self.handler.max_lives
                         # You died
                         if current_lives > new_lives:
                             if self.handler.initial_bombs < self.handler.max_bombs:
@@ -1073,7 +1088,6 @@ class TouhouUMContext(CommonContext):
                     # Check if the player has more bombs than max.
                     new_bombs = self.handler.getBombs()
                     if current_bombs != new_bombs:
-                        print("new bombs")
                         if new_bombs > self.handler.max_bombs:
                             self.handler.setBombs(self.handler.max_bombs)
                         current_bombs = new_bombs
@@ -1248,6 +1262,7 @@ class TouhouUMContext(CommonContext):
             CHARACTER_SELECT = 6
             SPELLCARD_PRACTICE_SELECT = 18
             SPELLCARD_PRACTICE2_SELECT = 19
+            SPELLCARD_PRACTICE3_SELECT = 20
 
             game_state = -1
             menu_select_state = None

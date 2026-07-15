@@ -270,6 +270,24 @@ class GameController:
             self.pm.write_int(address, new_value)
             address += 4
 
+    # Sets restrictions for the difficulties in spellcard practice.
+    def setSpellCardPracticeDifficultyRestrict(self, restrict_list: list[bool]) -> None:
+        restrict_address = getPointerAddress(self.pm, self.mainMenuPtr, ADDR_MENU_RESTRICT_SIZE_OFFSET)
+        self.pm.write_int(restrict_address, 1)
+        restrict_address += 4
+        self.pm.write_int(restrict_address, 5)
+
+        address = getPointerAddress(self.pm, self.mainMenuPtr, ADDR_MENU_RESTRICT_HEAD_OFFSET)
+        for i in range(4):
+            print(f"{i} {restrict_list[i]}")
+            if not restrict_list[i]:
+                self.pm.write_int(address, i)
+            else:
+                self.pm.write_int(address, 5)
+            address += 4
+
+        self.pm.write_int(address, 4)
+
     def setPracticeRestrict(self) -> None:
         extra_disabled = True
 
