@@ -61,3 +61,4 @@ VTABLE_BLANKCARD_ADDR = 0xb5fb8
 
 CARD_SMALL_ICON_HEAD = 0xC53F0 #49 indices 0x34 apart.
 #0xB2C is total distance
+

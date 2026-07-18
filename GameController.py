@@ -9,6 +9,7 @@ from .variables.address_cards import *
 from .variables.stage_constants import *
 from .variables.card_constants import *
 from .variables.meta_data import *
+from .variables.option_constants import *
 from .Tools import *
 
 
@@ -413,6 +414,30 @@ class GameController:
         vtable_address = CARD_ID_TO_VTABLE_ADDR[card_id] + self.pm.base_address
         self.pm.write_int(address, vtable_address)
 
+    def isCardAddressNull(self, cardPtr: int) -> bool:
+        vtable_val = self.pm.read_int(cardPtr)
+        vtable_val = self.pm.read_int(vtable_val)
+        return vtable_val == (VTABLE_NULL_ADDR + self.pm.base_address)
+
+    def getEquipmentOptionAddresses(self) -> list:
+        return_list = []
+        address = getPointerAddress(self.pm, self.playerPtr, EQUIPMENT_OPTION_OFFSET)
+        while self.pm.read_int(address) == 2:
+            return_list.append(address)
+            address += EQUIPMENT_OPTION_SIZE
+
+        return return_list
+
+    # Updates the movement of an option object and controls whether it follows the player or not.
+    def setEquipmentOption(self, address: int, y_offset: int, move_with_player: bool, equip_function: int) -> None:
+        self.pm.write_int(address + EQUIPMENT_OPTION_Y_OFFSET, y_offset)
+        follow_player = 2 if move_with_player else 0
+        self.pm.write_int(address + EQUIPMENT_OPTION_FOLLOW, follow_player)
+        if not equip_function == 0:
+            equip_function += self.pm.base_address
+            self.pm.write_int(address + EQUIPMENT_OPTION_FUNCTION_OFFSET, equip_function)
+        else:
+            self.pm.write_int(address + EQUIPMENT_OPTION_FUNCTION_OFFSET, equip_function)
 
     '''
     Shop Info

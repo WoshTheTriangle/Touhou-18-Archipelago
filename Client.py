@@ -908,6 +908,7 @@ class TouhouUMContext(CommonContext):
 
             new_lives = 0
             current_lives = 0
+            player_died = False
 
             new_bombs = 0
             current_bombs = 0
@@ -1007,8 +1008,6 @@ class TouhouUMContext(CommonContext):
                     # Allow the game to fully load the stage first.
                     # If the client attempts to force the player back while the stage is loading the game will crash.
                     if not self.checked_if_owns_stage and previous_stage != current_stage:
-                        print("h")
-
                         # The stage updates before the time so we need a slight buffer just in case.
                         if initial_loop_buffer:
                             print("need to wait")
@@ -1038,6 +1037,16 @@ class TouhouUMContext(CommonContext):
                             if impossible_state:
                                 self.handler.forceToMainMenu()
                                 self.checked_if_owns_stage = False
+
+                            # Options can be placed weirdly if some exist and others do not. This is to fix that.
+                            if self.handler.getPlayerState() == 1:
+                                self.handler.updateEquipmentOptionState()
+
+                    # Update options on death since they are recreated at that point.
+                    if player_died and self.handler.getPlayerState() == 1:
+                        player_died = False
+                        self.handler.updateEquipmentOptionState()
+
 
                     # Checking for continues and restarts.
                     if current_score > self.handler.getScore():
@@ -1079,6 +1088,7 @@ class TouhouUMContext(CommonContext):
                             new_lives = self.handler.max_lives
                         # You died
                         if current_lives > new_lives:
+                            player_died = True
                             if self.handler.initial_bombs < self.handler.max_bombs:
                                 self.handler.setBombs(self.handler.initial_bombs)
                             else:
@@ -1096,6 +1106,7 @@ class TouhouUMContext(CommonContext):
                 elif currently_in_stage:
                     initial_loop_buffer = True
                     currently_in_stage = False
+                    player_died = False
                     self.checked_if_owns_stage = False
 
         except Exception as e:

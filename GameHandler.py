@@ -2,6 +2,7 @@ from .GameController import GameController
 from .variables.card_constants import *
 from .variables.stage_constants import *
 from .variables.address_shop import *
+from .variables.option_constants import *
 from .Tools import clamp
 
 class GameHandler:
@@ -429,6 +430,45 @@ class GameHandler:
     def getPlayerState(self) -> int:
         return self.gameController.getPlayerState()
 
+    # If a card isn't unlocked but is purchased, disable it.
+    # The re-enabling is in case the card gets checked while they own a disabled one.
+    def updateCardLockState(self) -> None:
+        card_addresses = self.getCardAddresses()
+        card_ids = self.getHeldCards()
+        for i in range(len(card_addresses)):
+            # Null Card
+            if card_ids[i] == 56: continue
+            
+            if(self.cardsUnlocked[card_ids[i]] == False):
+                self.gameController.disableCard(card_addresses[i])
+                print("DENIED")
+            elif(self.cardsUnlocked[card_ids[i]] == True):
+                self.gameController.enableCard(card_addresses[i])
+                print("We are in")
+
+    def updateEquipmentOptionState(self) -> None:
+        card_ids = self.getHeldCards()
+        card_addresses = self.getCardAddresses()
+        equipment_option_ids = self.gameController.getEquipmentOptionAddresses()
+        equip_option_index = 0
+        for i in range(len(card_ids)):
+            if card_ids[i] in EQUIPMENT_CARDS and not self.gameController.isCardAddressNull(card_addresses[i]):
+                y_offset = OPTION_Y_OFFSETS[card_ids[i]]
+                not_follow_player = card_ids[i] in UNIQUE_MOVE_OPTIONS
+                equip_function = 0
+                if not_follow_player:
+                    equip_function = OPTION_FUNCTION[card_ids[i]]
+
+                # Potential bugs.
+                if(equip_option_index >= len(equipment_option_ids)): return 
+
+                self.gameController.setEquipmentOption(equipment_option_ids[equip_option_index], y_offset, not_follow_player, equip_function)
+                equip_option_index += 1
+
+                if card_ids[i] == MISUMARU_CARD: # Misumaru's card makes two option objects.
+                    self.gameController.setEquipmentOption(equipment_option_ids[equip_option_index], y_offset, not_follow_player, equip_function)
+                    equip_option_index += 1                    
+
     '''
     Helper Functions
     '''
@@ -589,8 +629,6 @@ class GameHandler:
         self.gameController.setCardIcon(id)
 
     def isStageUnlocked(self, character: int, stage_num: int) -> bool:
-        print(f"{character} {stage_num}")
-        print(self.stagesUnlocked[character][stage_num])
         return self.stagesUnlocked[character][stage_num]
 
     def isDifficultyUnlocked(self, difficulty: int) -> bool:
@@ -620,23 +658,6 @@ class GameHandler:
     '''
     Shop Settings
     '''
-
-    # If a card isn't unlocked but is purchased, disable it.
-    # The re-enabling is in case the card gets checked while they own a disabled one.
-    def updateCardLockState(self) -> None:
-        card_addresses = self.getCardAddresses()
-        card_ids = self.getHeldCards()
-        for i in range(len(card_addresses)):
-            # Null Card
-            if card_ids[i] == 56: continue
-            
-            if(self.cardsUnlocked[card_ids[i]] == False):
-                self.gameController.disableCard(card_addresses[i])
-                print("DENIED")
-            elif(self.cardsUnlocked[card_ids[i]] == True):
-                self.gameController.enableCard(card_addresses[i])
-                print("We are in")
-
 
     def getShopCards(self) -> list:
         numCards = self.gameController.getShopCardCount()
