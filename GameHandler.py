@@ -205,12 +205,17 @@ class GameHandler:
 
     # Essentially hashing completions for review in checking if goals have been met.
     def setGoalCompleted(self, character: int, goal_id: int) -> None:
+        # The protagonists' second equip cards are normally unlocked upon beating the game.
+        character_unlock_list = [REIMU2_CARD, MARISA2_CARD, SAKUYA2_CARD, SANAE2_CARD]
+
         if goal_id == GOAL_CHIMATA:
+            self.purchaseCard(character_unlock_list[character])
             self.endingCompleted[character] = True
         elif goal_id == GOAL_MOMOYO:
             self.extraCompleted[character] = True
         elif goal_id == GOAL_CHIMATA_BLANK:
-           self.altEndingCompleted[character] = True
+            self.purchaseCard(character_unlock_list[character])
+            self.altEndingCompleted[character] = True
 
     # Set the boss you just defeated for the first time to defeated by checking it off in the list.
     def setCurrentBossDefeated(self, counter, check_difficulties: bool = False, check_lower_difficulties: bool = False) -> None:
@@ -406,6 +411,11 @@ class GameHandler:
         This is to make it so all cards that have not been purchased have the "New!" icon above them.
         '''
         for i in range(56):
+            if i == BLANK_CARD: continue
+
+            if (i == REIMU2_CARD or i == MARISA2_CARD or i == SAKUYA2_CARD or i == SANAE2_CARD):
+                continue
+
             self.gameController.setCardUnlockState(i, self.cardsPurchased[i])
 
     def setDefaultCardUnlockStates(self) -> None:

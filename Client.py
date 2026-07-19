@@ -537,16 +537,16 @@ class TouhouUMContext(CommonContext):
                 print("new location")
                 new_locations.append(id)
 
-        # New cards purchased
-        for id, card_id in self.location_id_to_card_id.items():
-            
-            if id not in self.previous_location_checked and self.handler.hasCardBeenPurchased(card_id):
-                new_locations.append(id)
-
         # Goal check
         for id, ending_map in self.location_id_to_ending_mapping.items():
             if id not in self.previous_location_checked and self.handler.isGoalCompleted(*ending_map):
                 self.handler.setGoalCompleted(*ending_map)
+                new_locations.append(id)
+                
+        # New cards purchased
+        for id, card_id in self.location_id_to_card_id.items():
+            
+            if id not in self.previous_location_checked and self.handler.hasCardBeenPurchased(card_id):
                 new_locations.append(id)
 
         # If there are any new locations, add them to the list and send them to the server.
@@ -925,6 +925,12 @@ class TouhouUMContext(CommonContext):
             spell_practice = False
             game_mode = None
 
+            init_lives = 0
+            init_bombs = 0
+            held_cards =  None
+            contains_jizo = False
+            contains_patchy = False
+
             time_in_stage = 0
             game_state = -1
 
@@ -960,6 +966,10 @@ class TouhouUMContext(CommonContext):
                         current_score = self.handler.getScore()
                         current_continue = self.handler.getContinues()
                         current_stage = self.handler.getStage()
+
+                        held_cards = self.handler.getHeldCards()
+                        contains_jizo = NARUMI_CARD in held_cards
+                        contains_patchy = PATCHOULI_CARD in held_cards
 
                         # There is dialogue at the end of stage 5 so we need to wait until that is over and stage 6 has begun.
                         while current_stage == 5 and self.handler.getTimeInStage() > 2000:
@@ -997,8 +1007,16 @@ class TouhouUMContext(CommonContext):
                         while not self.handler.guiExists():
                             await asyncio.sleep(0.5)
                         
-                        self.handler.setLives(self.handler.initial_lives)
-                        self.handler.setBombs(self.handler.initial_bombs)
+                        init_lives = self.handler.initial_lives
+                        init_bombs = self.handler.initial_bombs
+
+                        if contains_jizo:
+                            init_lives += 1
+                        if contains_patchy:
+                            init_bombs += 1
+
+                        self.handler.setLives(init_lives)
+                        self.handler.setBombs(init_bombs)
 
                         given_resources = True
                         
@@ -1090,7 +1108,7 @@ class TouhouUMContext(CommonContext):
                         if current_lives > new_lives:
                             player_died = True
                             if self.handler.initial_bombs < self.handler.max_bombs:
-                                self.handler.setBombs(self.handler.initial_bombs)
+                                self.handler.setBombs(init_bombs)
                             else:
                                 self.handler.setBombs(self.handler.max_bombs)
                         current_lives = new_lives
@@ -1175,6 +1193,9 @@ class TouhouUMContext(CommonContext):
                             and not self.handler.cardsUnlocked[shop_card_id_list[i]]):
                                 self.handler.disableCard(shop_card_list[i])
 
+                            if(shop_card_id_list[i] == BLANK_CARD and not self.handler.cardsUnlocked[BLANK_CARD]):
+                                self.handler.disableCard(shop_card_list[i])
+
                 # Leaving Shop    
                 elif currently_in_shop:
                     #logger.info("Left a shop")
@@ -1190,13 +1211,13 @@ class TouhouUMContext(CommonContext):
 
                     if blank_card_state: # Owned Blank Card
                         for card in new_card_list:
-                            if not self.handler.hasCardBeenPurchased(card):
+                            if not self.handler.hasCardBeenPurchased(card) and (card not in POST_VICTORY_CARDS):
                                 self.handler.purchaseCard(card)
 
                             if not self.handler.hasCardBeenReceived(card):
                                 self.handler.setCardUnlockState(card, False)
                     elif len(new_card_list) != len(player_card_list): # Didn't own blank card but got a new card.
-                        if not self.handler.hasCardBeenPurchased(new_card_list[-1]):
+                        if not self.handler.hasCardBeenPurchased(new_card_list[-1]) and (new_card_list[-1] not in POST_VICTORY_CARDS):
                             self.handler.purchaseCard(new_card_list[-1])
                             
                             # If the card has not been received via Archipelago, set it to still be locked
@@ -1242,15 +1263,19 @@ class TouhouUMContext(CommonContext):
                                 self.handler.setPower(current_power)
                                 self.handler.setCardUnlockState(RINGO_CARD, False) 
 
-                    # Sannyo's card is weird in the fact that it's effect is only active if you have a card of its ID
+                    # Sannyo and Mike's card is weird in the fact that it's effect is only active if you have a card of its ID
                     # when you start a stage. To account for this, we have to change it before the stage starts.
-                    # I chose the life card since it cannot be owned as a permanent card so this wouldn't make
-                    # a card you have on you into a Dragon Pipe.
+                    # I chose arbitrary item cards since you can't own them as cards so they can't just turn into other cards.
                     for i in range(len(new_card_list)):
                         if new_card_list[i] == SANNYO_CARD and not self.handler.hasCardBeenReceived(SANNYO_CARD):
                             self.handler.setCardID(card_addresses[i], LIFE_CARD)
                         elif new_card_list[i] == LIFE_CARD and self.handler.hasCardBeenReceived(SANNYO_CARD):
                             self.handler.setCardID(card_addresses[i], SANNYO_CARD)
+
+                        if new_card_list[i] == MIKE_CARD and not self.handler.hasCardBeenReceived(MIKE_CARD):
+                            self.handler.setCardID(card_addresses[i], BOMB_CARD)
+                        elif new_card_list[i] == BOMB_CARD and self.handler.hasCardBeenReceived(MIKE_CARD):
+                            self.handler.setCardID(card_addresses[i], MIKE_CARD)
                     
                     await self.update_locations_checked()
 

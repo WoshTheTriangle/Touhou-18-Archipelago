@@ -76,6 +76,7 @@ class Goal(Choice):
     Chimata Blank Card Ending: Defeating Chimata Tenkyuu with the Blank Card (Complete Stage 6 with Blank Card).
     Ability Cards: Acquire a certain number of ability cards.
                    Blank Card and Sky-Blue Magatama are not counted towards this number.
+    All: Combined goals of Defeat Momoyo, Chimata Blank Card Ending, and Ability Cards.
     """
     display_name = "Goal"
 

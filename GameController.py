@@ -430,6 +430,8 @@ class GameController:
 
     # Updates the movement of an option object and controls whether it follows the player or not.
     def setEquipmentOption(self, address: int, y_offset: int, move_with_player: bool, equip_function: int) -> None:
+        self.pm.write_int(address + EQUIPMENT_OPTION_Y_OFFSET - 4, 0) # X offset (I think this is only needed for Alice's card)
+
         self.pm.write_int(address + EQUIPMENT_OPTION_Y_OFFSET, y_offset)
         follow_player = 2 if move_with_player else 0
         self.pm.write_int(address + EQUIPMENT_OPTION_FOLLOW, follow_player)
