@@ -114,9 +114,23 @@ def getStageLocationMapping(split_by_difficulty: bool):
 def getAPIDsForCards():
     mapping = {}
     for location_name, id in location_table.items():
-        if not "Purchased" in location_name:
+        purchase = False
+        unlock = False
+
+        if "Purchased" in location_name:
+            purchase = True
+        elif "Unlocked" in location_name:
+            unlock = True
+        else:
             continue
-        name = (location_name.split("Purchased ")[1])
+
+        if BLANK_CARD_NAME in location_name or MAGATAMA_CARD_NAME in location_name:
+            continue
+
+        if purchase:
+            name = (location_name.split("Purchased ")[1])
+        elif unlock:
+            name = (location_name.split("Unlocked ")[1])
 
         value = NAME_TO_CARD_ID.get(name)
         if value == None:

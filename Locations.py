@@ -71,8 +71,18 @@ for difficulty in DIFFICULTY_NAMES:
 
 # Card Purchase Locations
 for card in ABILITY_CARD_LIST:
+    if card in POST_VICTORY_CARD_IDS:
+        continue
+
     card_name = CARD_ID_TO_NAME[card]
     location = f"Purchased {card_name}"
+    location_table[location] = location_offset
+    location_id_to_name[location_offset] = location
+    location_offset += 1
+
+for card in POST_VICTORY_CARD_IDS:
+    card_name = CARD_ID_TO_NAME[card]
+    location = f"Unlocked {card_name}"
     location_table[location] = location_offset
     location_id_to_name[location_offset] = location
     location_offset += 1

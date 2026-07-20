@@ -31,7 +31,7 @@ def generate_regions(world, exclude_lunatic, extra_stage_acquire, split_by_diffi
     init_region = Region("Menu", world.player, world.multiworld)
     region_list.append(init_region)
 
-    special_cards = STAGE_EXCLUSIVE_SHOP_CARDS + EXPENSIVE_CARDS
+    special_cards = STAGE_EXCLUSIVE_SHOP_CARDS + EXPENSIVE_CARDS + POST_VICTORY_CARDS
 
     card_names = [name for name in NAME_TO_CARD_ID if name not in special_cards]
     card_location_names = [f"Purchased {card_name}" for card_name in card_names]
@@ -47,7 +47,6 @@ def generate_regions(world, exclude_lunatic, extra_stage_acquire, split_by_diffi
         # You can't easily afford these on stage 1 so they are going to be thought of as if they are from stage 2.
         if stage == 2: 
             for card_name in EXPENSIVE_CARDS:
-                
                 region_shop.add_locations(get_location_names_with_ids([f"Purchased {card_name}"]), TouhouUMLocation)
 
         if stage == 5:
@@ -107,26 +106,24 @@ def generate_regions(world, exclude_lunatic, extra_stage_acquire, split_by_diffi
             region_list.append(stage_region)
 
         stage_region = Region("Extra Stage Clear", world.player, world.multiworld)
-        stage_region.add_locations(get_location_names_with_ids([f"Purchased {MOMOYO_CARD_NAME}"]), TouhouUMLocation)
+        stage_region.add_locations(get_location_names_with_ids([f"Unlocked {MOMOYO_CARD_NAME}"]), TouhouUMLocation)
         region_list.append(stage_region)
 
     # Beating the game.
     stage_region = Region("Beat The Game", world.player, world.multiworld)
 
     # Victory locations (these are fixed)
-    
-    # Post victory cards.
-    '''
-    card_location_names = [f"Purchased {card_name}" for card_name in POST_VICTORY_CARDS]
+
+    card_location_names = [f"Unlocked {card_name}" for card_name in POST_VICTORY_CARDS]
     card_locations = get_location_names_with_ids(card_location_names)
     stage_region.add_locations(card_locations, TouhouUMLocation)
-    '''
-
+    
     for character in CHARACTER_NAMES:
         victory_location_name = f"[{character}] Defeated Chimata Ending"
         victory_location = TouhouUMLocation(world.player, victory_location_name, location_table[victory_location_name], stage_region)
         victory_location.place_locked_item(world.create_item(victory_location_name))
         stage_region.locations.append(victory_location)
+
     region_list.append(stage_region)
 
     stage_region = Region("Beat The Game [Alternate]", world.player, world.multiworld)

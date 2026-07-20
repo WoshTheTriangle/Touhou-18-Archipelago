@@ -125,7 +125,7 @@ def set_all_location_rules(world) -> None:
     world.set_rule(magatama_card_location, HasFromListUnique(*card_list, count = magatama_requirement))
 
     for character in CHARACTERS:
-        player_card_location = world.get_location(f"Purchased {POST_VICTORY_CARDS[character]}")
+        player_card_location = world.get_location(f"Unlocked {POST_VICTORY_CARDS[character]}")
         world.set_rule(player_card_location, Has(f"[{CHARACTER_NAMES[character]}] Defeated Chimata Ending") 
                                             | Has(f"[{CHARACTER_NAMES[character]}][Blank Card] Defeated Chimata Ending"))
 

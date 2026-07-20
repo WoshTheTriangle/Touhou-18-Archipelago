@@ -1211,13 +1211,13 @@ class TouhouUMContext(CommonContext):
 
                     if blank_card_state: # Owned Blank Card
                         for card in new_card_list:
-                            if not self.handler.hasCardBeenPurchased(card) and (card not in POST_VICTORY_CARDS):
+                            if not self.handler.hasCardBeenPurchased(card) and (card not in POST_VICTORY_CARD_IDS):
                                 self.handler.purchaseCard(card)
 
                             if not self.handler.hasCardBeenReceived(card):
                                 self.handler.setCardUnlockState(card, False)
                     elif len(new_card_list) != len(player_card_list): # Didn't own blank card but got a new card.
-                        if not self.handler.hasCardBeenPurchased(new_card_list[-1]) and (new_card_list[-1] not in POST_VICTORY_CARDS):
+                        if not self.handler.hasCardBeenPurchased(new_card_list[-1]) and (new_card_list[-1] not in POST_VICTORY_CARD_IDS):
                             self.handler.purchaseCard(new_card_list[-1])
                             
                             # If the card has not been received via Archipelago, set it to still be locked
@@ -1346,31 +1346,12 @@ class TouhouUMContext(CommonContext):
                         '''
                         Additional Location Check upon entering the menu.
                         '''   
-                        # We shouldn't check locations until they are all already added to the list.
-                        # That could be some scary read-write issues.
-                        '''
-                        while(self.location_semaphore_in_use):
-                            print("Location semaphore in use")
-                            await asyncio.sleep(0.5)
-                        '''
 
-                        # Extra goal check just in-case that it did not properly register.
-                        for id, ending_map in self.location_id_to_ending_mapping.items():
-                            if id not in self.previous_location_checked and self.handler.isGoalCompleted(*ending_map):
-                                print("new location!!!")
-                                self.handler.setGoalCompleted(*ending_map)
-                                new_locations.append(id)
+                        await self.update_locations_checked()
 
                         if self.options["goal"] == GOAL_ITEMS or self.options["goal"] == GOAL_ALL:
                             if self.options["card_req"] <= self.handler.get_unlocked_card_count():
                                 self.check_victory()
-        
-                        # If we actually found something new then send it.
-                        if new_locations:
-                            print("Missed something it seems")
-                            print(f"{new_locations}")
-                            self.previous_location_checked += new_locations
-                            await self.send_msgs([{"cmd": 'LocationChecks', "locations": new_locations}])
 
                     # General Main Menu Stuff.
                     menu_select_state = self.handler.getMainMenuSelectArea()

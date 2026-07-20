@@ -212,6 +212,7 @@ class GameHandler:
             self.purchaseCard(character_unlock_list[character])
             self.endingCompleted[character] = True
         elif goal_id == GOAL_MOMOYO:
+            self.purchaseCard(MOMOYO_CARD)
             self.extraCompleted[character] = True
         elif goal_id == GOAL_CHIMATA_BLANK:
             self.purchaseCard(character_unlock_list[character])
@@ -413,7 +414,7 @@ class GameHandler:
         for i in range(56):
             if i == BLANK_CARD: continue
 
-            if (i == REIMU2_CARD or i == MARISA2_CARD or i == SAKUYA2_CARD or i == SANAE2_CARD):
+            if (i in POST_VICTORY_CARD_IDS):
                 continue
 
             self.gameController.setCardUnlockState(i, self.cardsPurchased[i])
