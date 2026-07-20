@@ -163,35 +163,79 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
 
     def _cmd_cards(self, state: str = None) -> None:
         """
-        Check what cards you have or have not purchased in your Touhou 18 world.
+        Send the state of cards purchased or received in your Touhou 18 world.
         If no argument is given, will default to listing cards that have not been purchased.
-        :param trigger: If "Purchased" or "True" will list cards that have been purchased.
-                        If "Not_Purchased" or "False" will list cards that have not been purchased.
+        :param trigger: If "Purchased" or will list cards that have been purchased.
+                        If "Not_Purchased" or will list cards that have not been purchased.
+                        If "Received" will list all cards that have been received by the multiworld.
+                        If "Not_Received" will list all cards that have not received by the multiworld.
         """
         
         if not self.ctx.is_connected:
             logger.info("Not connected to the server.")
             return
 
+        if not self.ctx.handler:
+            logger.info("Not connected to a Touhou 18 process")
+            return
+
         count = 0
         if state == None or state.lower() in ["not_purchased", "false"]:
             logger.info("Cards Not Purchased:")
+
             for id in self.ctx.missing_locations:
+                if (BLANK_CARD_NAME in location_id_to_name[id] or
+                    MAGATAMA_CARD_NAME in location_id_to_name[id]):
+                    continue
+
                 if "Purchased" in location_id_to_name[id]:
                     card_name = (location_id_to_name[id].split("Purchased "))[1]
+                    logger.info(card_name)
+                    count += 1
+                elif "Unlocked" in location_id_to_name[id]:
+                    card_name = (location_id_to_name[id].split("Unlocked "))[1]
                     logger.info(card_name)
                     count += 1
             logger.info(f"Number of cards not purchased: {count}/52")
         elif state.lower() in ["purchased", "true"]:
             logger.info("Cards Purchased:")
+
             for id in self.ctx.previous_location_checked:
+                if (BLANK_CARD_NAME in location_id_to_name[id] or
+                    MAGATAMA_CARD_NAME in location_id_to_name[id]):
+                    continue
+
                 if "Purchased" in location_id_to_name[id]:
                     card_name = (location_id_to_name[id].split("Purchased "))[1]
                     logger.info(card_name)
                     count += 1
+                elif "Unlocked" in location_id_to_name[id]:
+                    card_name = (location_id_to_name[id].split("Unlocked "))[1]
+                    logger.info(card_name)
+                    count += 1
             logger.info(f"Number of cards purchased: {count}/52")
+        elif state.lower() in ["received"]:
+            logger.info("Cards Received:")
+            
+            for i in range(1, 55):
+                if self.ctx.handler.hasCardBeenReceived(i):
+                    card_name = CARD_ID_TO_NAME[i]
+                    logger.info(card_name)
+                    count += 1
+            logger.info(f"Number of cards received: {count}/52")
+        elif state.lower() in ["not_received"]:
+            logger.info("Cards Not Received:")
+
+            for i in range(1, 55):
+                if i == 3 or i == 4: continue
+
+                if not self.ctx.handler.hasCardBeenReceived(i):
+                    card_name = CARD_ID_TO_NAME[i]
+                    logger.info(card_name)
+                    count += 1
+            logger.info(f"Number of cards received: {count}/52")
         else:
-            logger.info("Incorrect argument given. Use 'Purchased' or 'Not_Purchased'")
+            logger.info("Incorrect argument given. Use 'Purchased', 'Not_Purchased', 'Received', or 'Not_Received'")
         
 
             
@@ -1362,8 +1406,10 @@ class TouhouUMContext(CommonContext):
                         # Lock character options
                         if current_menu_state != CHARACTER_SELECT:
                             current_menu_state = CHARACTER_SELECT
-                            if selected_difficulty != 4: # Don't lock on extra select
+                            if selected_difficulty != 4: # Separate lock if in the extra stage select.
                                 self.handler.setCharacterRestrict()
+                            else:
+                                self.handler.setExtraCharacterRestrict()
 
                         
                         # Player entered a difficulty they do not have access to, fix it.

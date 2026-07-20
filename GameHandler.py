@@ -278,6 +278,14 @@ class GameHandler:
         self.gameController.initMenuRestrict()
         self.gameController.setMenuRestrict(self.charactersUnlocked)
 
+    def setExtraCharacterRestrict(self) -> None:
+        restrict_list = [False, False, False, False]
+        for i in range(4):
+            restrict_list[i] = self.charactersUnlocked[i] and self.stagesUnlocked[i][7]
+
+        self.gameController.initMenuRestrict()
+        self.gameController.setMenuRestrict(restrict_list)
+
     def setPracticeRestrict(self) -> None:
         self.gameController.setPracticeRestrict()
         if self.getMainMenuSelect() >= 2 and self.getMainMenuSelect() <= 4:
