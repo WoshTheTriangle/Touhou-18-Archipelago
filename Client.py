@@ -216,7 +216,7 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
             logger.info(f"Number of cards purchased: {count}/52")
         elif state.lower() in ["received"]:
             logger.info("Cards Received:")
-            
+
             for i in range(1, 55):
                 if self.ctx.handler.hasCardBeenReceived(i):
                     card_name = CARD_ID_TO_NAME[i]
@@ -1031,6 +1031,7 @@ class TouhouUMContext(CommonContext):
                         # There is a shop in the middle of the extra stage so we need to account for it.
                         # If you manage to somehow have less than 100,000 score upon reaching Momoyo, you deserve it.
                         if current_stage == 7 and current_score > 10000:
+                            previous_stage = 0
                             boss_counter = 0
                         # New game or extra stage
                         elif current_stage == 1 or current_stage == 7:
@@ -1071,6 +1072,7 @@ class TouhouUMContext(CommonContext):
                     # If the client attempts to force the player back while the stage is loading the game will crash.
                     if not self.checked_if_owns_stage and previous_stage != current_stage:
                         # The stage updates before the time so we need a slight buffer just in case.
+
                         if initial_loop_buffer:
                             print("need to wait")
                             initial_loop_buffer = False
@@ -1136,7 +1138,7 @@ class TouhouUMContext(CommonContext):
                             # Boss slain.
                             if not self.handler.isBossActive():
                                 print("boss down")
-                                if not self.handler.isCurrentBossDefeated(boss_counter):
+                                if not self.handler.isCurrentBossDefeated(boss_counter) and self.handler.getLives() != -1:
                                     print("new boss down")
                                     self.handler.setCurrentBossDefeated(boss_counter, difficulty_check, lower_difficulty_check)
                                     await self.update_locations_checked()
