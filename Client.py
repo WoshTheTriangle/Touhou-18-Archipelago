@@ -581,8 +581,7 @@ class TouhouUMContext(CommonContext):
 
         # Stage-related Locations
         for id, map in self.stage_location_mappings.items():
-            if self.handler.isBossBeaten(*map) and id not in self.previous_location_checked:
-                print("new location")
+            if id not in self.previous_location_checked and self.handler.isBossBeaten(*map):
                 new_locations.append(id)
 
         # Goal check

@@ -17,8 +17,6 @@ class GameHandler:
     continues = 0
     cardSlots = 1
 
-    latestStageIndex = 0
-
     bossesBeaten: dict = {}
     extraBeaten: dict = {}
     stagesUnlocked: dict = {}
@@ -79,17 +77,16 @@ class GameHandler:
     def reset(self) -> None:
 
         # Default values
-        initial_lives = 0
-        initial_bombs = 0
+        self.initial_lives = 0
+        self.initial_bombs = 0
 
-        max_lives = 0
-        max_bombs = 0
+        self.max_lives = 0
+        self.max_bombs = 0
 
-        continues = 0
-        cardSlots = 1
-        latestStageIndex = 1
+        self.continues = 0
+        self.cardSlots = 1
 
-        unlocked_card_count = 0
+        self.unlocked_card_count = 0
 
         for character in CHARACTERS:
             self.bossesBeaten[character] = {}
@@ -225,18 +222,17 @@ class GameHandler:
         current_character = self.gameController.getCurrentCharacter()
         
         if (currentStage == 7):
-            print("extra stage beat thing")
             self.extraBeaten[current_character][counter] = True
         else:
             self.bossesBeaten[current_character][self.getDifficulty()][self.gameController.getStage() - 1][counter] = True
             
             if check_lower_difficulties:
                 if self.difficultiesUnlocked[DIFFICULTY_EASY]:
-                    self.bossesBeaten[current_character][EASY][self.gameController.getStage() - 1][counter] = True
+                    self.bossesBeaten[current_character][DIFFICULTY_EASY][self.gameController.getStage() - 1][counter] = True
                 if self.difficultiesUnlocked[DIFFICULTY_NORMAL] and current_difficulty >= DIFFICULTY_NORMAL:
-                    self.bossesBeaten[current_character][NORMAL][self.gameController.getStage() - 1][counter] = True
+                    self.bossesBeaten[current_character][DIFFICULTY_NORMAL][self.gameController.getStage() - 1][counter] = True
                 if self.difficultiesUnlocked[DIFFICULTY_HARD] and current_difficulty >= DIFFICULTY_HARD:
-                    self.bossesBeaten[current_character][HARD][self.gameController.getStage() - 1][counter] = True
+                    self.bossesBeaten[current_character][DIFFICULTY_HARD][self.gameController.getStage() - 1][counter] = True
     
     '''
     Main Menu Stuff
