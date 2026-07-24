@@ -425,6 +425,10 @@ class TouhouUMContext(CommonContext):
             if "Purchased" in location_id_to_name[id]:
                 card_name = (location_id_to_name[id].split("Purchased "))[1]
                 card_location_list.append(NAME_TO_CARD_ID[card_name])
+            elif "Unlocked" in location_id_to_name[id]:
+                if BLANK_CARD_NAME or MAGATAMA_CARD_NAME in location_id_to_name[id]: continue
+                card_name = (location_id_to_name[id].split("Unlocked "))[1]
+                card_location_list.append(NAME_TO_CARD_ID[card_name])
             
             
 
@@ -1002,6 +1006,9 @@ class TouhouUMContext(CommonContext):
                         if game_mode == 32 or game_mode == 36 or game_mode == 64: 
                             await asyncio.sleep(2)
                             continue
+
+                        # Let the game load some stuff first.
+                        await asyncio.sleep(1)
 
                         currently_in_stage = True
                         boss_counter = -1

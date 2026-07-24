@@ -231,11 +231,11 @@ class GameHandler:
             self.bossesBeaten[current_character][self.getDifficulty()][self.gameController.getStage() - 1][counter] = True
             
             if check_lower_difficulties:
-                if difficultiesUnlocked[DIFFICULTY_EASY]:
+                if self.difficultiesUnlocked[DIFFICULTY_EASY]:
                     self.bossesBeaten[current_character][EASY][self.gameController.getStage() - 1][counter] = True
-                if difficultiesUnlocked[DIFFICULTY_NORMAL] and current_difficulty >= DIFFICULTY_NORMAL:
+                if self.difficultiesUnlocked[DIFFICULTY_NORMAL] and current_difficulty >= DIFFICULTY_NORMAL:
                     self.bossesBeaten[current_character][NORMAL][self.gameController.getStage() - 1][counter] = True
-                if difficultiesUnlocked[DIFFICULTY_HARD] and current_difficulty >= DIFFICULTY_HARD:
+                if self.difficultiesUnlocked[DIFFICULTY_HARD] and current_difficulty >= DIFFICULTY_HARD:
                     self.bossesBeaten[current_character][HARD][self.gameController.getStage() - 1][counter] = True
     
     '''
