@@ -214,7 +214,7 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
                     logger.info(card_name)
                     count += 1
             logger.info(f"Number of cards purchased: {count}/52")
-        elif state.lower() in ["received"]:
+        elif state.lower() in ["received", "unlocked"]:
             logger.info("Cards Received:")
 
             for i in range(1, 55):
@@ -223,7 +223,7 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
                     logger.info(card_name)
                     count += 1
             logger.info(f"Number of cards received: {count}/52")
-        elif state.lower() in ["not_received"]:
+        elif state.lower() in ["not_received", "not_unlocked"]:
             logger.info("Cards Not Received:")
 
             for i in range(1, 55):
@@ -478,6 +478,7 @@ class TouhouUMContext(CommonContext):
             self.blank_card_id = location_table[f"Unlocked {BLANK_CARD_NAME}"]
             self.magatama_id = location_table[f"Unlocked {MAGATAMA_CARD_NAME}"]
 
+            # Reset handler on reconnection.
             if self.handler is not None:
                 self.handler.reset()
 
@@ -485,6 +486,9 @@ class TouhouUMContext(CommonContext):
 
         if cmd == "ReceivedItems":
             # args["index"] is the next empty index of the list of items the player has.
+            if(args["index"] == 0 and self.handler is not None): # Empty inventory.
+                self.all_received_items = []
+                self.handler.reset()
             asyncio.create_task(self.handle_received_items(args["index"], args["items"]))
 
         elif cmd == "Retrieved":
@@ -702,7 +706,7 @@ class TouhouUMContext(CommonContext):
                 self.all_received_items = []
             new_items_list = network_items_list
 
-        else: # Network index is not 0, new items
+        else: # Network index is not 0, we are collecting new items mid-run.
             if local_list_length == network_index:
                 new_items_list = network_items_list
             # A desync has occurred
@@ -713,6 +717,7 @@ class TouhouUMContext(CommonContext):
                     sync_msg.append({"cmd": "LocationChecks",
                                      "locations": list(self.locations_checked)})
                 await self.send_msgs(sync_msg)
+                return 
 
         if len(new_items_list) <= 0: return
 
@@ -1745,8 +1750,8 @@ async def game_watcher(ctx):
             ctx.handler.excludeLunatic()
 
         # Initial maximum lives and bombs
-        ctx.handler.setMaxLives(ctx.options["init_max_lives"])
-        ctx.handler.setMaxBombs(ctx.options["init_max_bombs"])
+        #ctx.handler.setMaxLives(ctx.options["init_max_lives"])
+        #ctx.handler.setMaxBombs(ctx.options["init_max_bombs"])
 
         # If all is going well, we can just loop forever.
         while not ctx.exit_event.is_set() and ctx.server and not ctx.in_error:

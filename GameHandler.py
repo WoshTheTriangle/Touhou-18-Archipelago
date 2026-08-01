@@ -17,6 +17,8 @@ class GameHandler:
     continues = 0
     cardSlots = 1
 
+    excludeLunaticOption = False
+
     bossesBeaten: dict = {}
     extraBeaten: dict = {}
     stagesUnlocked: dict = {}
@@ -119,6 +121,11 @@ class GameHandler:
 
             for i in range(2, 8):
                 self.stagesUnlocked[character][i] = False
+
+        # Option settings
+        if self.excludeLunaticOption:
+            self.difficultiesUnlocked[3] = False
+
 
             
     def unlock_character(self, character: int) -> None:
@@ -583,6 +590,7 @@ class GameHandler:
 
     def excludeLunatic(self) -> None:
         self.difficultiesUnlocked[3] = False
+        self.excludeLunaticOption = True
 
     def resetSpeed(self) -> None:
         self.gameController.resetSpeed()
