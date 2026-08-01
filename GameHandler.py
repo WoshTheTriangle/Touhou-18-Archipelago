@@ -292,6 +292,7 @@ class GameHandler:
                         self.charactersUnlocked[CHARACTER_SAKUYA], self.charactersUnlocked[CHARACTER_SANAE]]
         self.gameController.setSpellCardPracticeRestrict(restrict_list)
 
+    # Unused for the time being.
     def setSpellCardPracticeDifficultyRestrict(self) -> None:
         self.gameController.setSpellCardPracticeDifficultyRestrict(self.difficultiesUnlocked)
 

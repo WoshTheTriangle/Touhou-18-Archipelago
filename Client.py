@@ -1370,7 +1370,7 @@ class TouhouUMContext(CommonContext):
             currently_in_menu = False
 
             while not self.exit_event.is_set() and self.handler and not self.in_error:
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(0.4)
 
                 game_state = self.handler.get_game_state()
 
@@ -1410,9 +1410,9 @@ class TouhouUMContext(CommonContext):
 
                     if menu_select_state == CHARACTER_SELECT:
                         selected_difficulty = self.handler.getDifficulty()
-
                         # Lock character options
                         if current_menu_state != CHARACTER_SELECT:
+                            await asyncio.sleep(0.1)
                             current_menu_state = CHARACTER_SELECT
                             if selected_difficulty != 4: # Separate lock if in the extra stage select.
                                 self.handler.setCharacterRestrict()
@@ -1425,17 +1425,21 @@ class TouhouUMContext(CommonContext):
                             logger.info(f"""Error: Entered locked difficulty option. Defaulting to {DIFFICULTY_NAMES[default_difficulty]}""")
                             self.handler.setDifficulty(default_difficulty) 
                     elif menu_select_state == DIFFICULTY_SELECT:
-
                         # Lock difficulty options
                         if current_menu_state != DIFFICULTY_SELECT:
+                            await asyncio.sleep(0.1)
                             current_menu_state = DIFFICULTY_SELECT
                             self.handler.setDifficultyRestrict()         
                     elif menu_select_state == MAIN_MENU_SELECT:
+                        # Lock main menu options
                         if current_menu_state != MAIN_MENU_SELECT:
+                            await asyncio.sleep(0.1)
                             current_menu_state = MAIN_MENU_SELECT
                             self.handler.setPracticeRestrict()
                     elif menu_select_state == SPELLCARD_PRACTICE_SELECT or menu_select_state == SPELLCARD_PRACTICE2_SELECT:
+                        # Lock spellcard practice charatcers available.
                         if current_menu_state != SPELLCARD_PRACTICE_SELECT:
+                            await asyncio.sleep(0.1)
                             current_menu_state = SPELLCARD_PRACTICE_SELECT
                             self.handler.setSpellCardPracticeRestrict()
                     else:
