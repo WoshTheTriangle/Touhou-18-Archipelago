@@ -29,6 +29,17 @@ class StageUnlock(Choice):
     option_per_character = 2
     default = 0
 
+class GuaranteeUnpurchasedCardPerShop(Toggle):
+    """
+    Guarantee that every shop pool has at least one unpurchased card present.
+    This card will be the rightmost one and unique to all the other cards in the pool.
+    No card will be created if all cards have already been purchased or no more unique unpurchased cards can exist.
+    Can be changed later.
+    """
+    display_name = "Guarantee Unpurchased Card Per Shop"
+
+    default = True
+
 class ExtraStage(Choice):
     """
     How Extra Stage should be included.
@@ -210,6 +221,7 @@ class TrapChance(Range):
 class Th18Options(PerGameCommonOptions):
     trap_chance: TrapChance
     stage_unlock: StageUnlock
+    new_card_per_shop: GuaranteeUnpurchasedCardPerShop
     extra_stage: ExtraStage
     magatama_req: MagatamaRequirement
     blank_card_req: BlankCardRequirement

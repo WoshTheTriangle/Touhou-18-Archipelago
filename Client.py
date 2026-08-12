@@ -47,13 +47,13 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
             return
 
         if new_state != None:
-            if new_state.lower() in ["on", "true"]:  
+            if new_state.lower() in ["on", "true", "enable"]:  
                 logger.info("Death Link Enabled")
                 if "DeathLink" not in self.ctx.tags:
                     self.ctx.tags.add("DeathLink")
                     self.ctx.deathlink_enabled = True
                     changed = True
-            elif new_state.lower() in ["off", "false"]:
+            elif new_state.lower() in ["off", "false", "disable"]:
                 if "DeathLink" in self.ctx.tags:
                     self.ctx.tags.remove("DeathLink")
                     self.ctx.deathlink_enabled = False
@@ -140,13 +140,13 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
             return
 
         if new_state != None:
-            if new_state.lower() in ["on", "true"]:  
+            if new_state.lower() in ["on", "true", "enable"]:  
                 logger.info("Ring Link Enabled")
                 if "RingLink" not in self.ctx.tags:
                     self.ctx.tags.add("RingLink")
                     self.ctx.ring_link_enabled = True
                     changed = True
-            elif new_state.lower() in ["off", "false"]:
+            elif new_state.lower() in ["off", "false", "disable"]:
                 if "RingLink" in self.ctx.tags:
                     self.ctx.tags.remove("RingLink")
                     self.ctx.ring_link_enabled = False
@@ -161,7 +161,7 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
 
         logger.info(f"Ring Link status: {self.ctx.ring_link_enabled}")
 
-    def _cmd_cards(self, state: str = None) -> None:
+    def _cmd_cards(self, new_state: str = None) -> None:
         """
         Send the state of cards purchased or received in your Touhou 18 world.
         If no argument is given, will default to listing cards that have not been purchased.
@@ -237,6 +237,24 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
         else:
             logger.info("Incorrect argument given. Use 'Purchased', 'Not_Purchased', 'Received', or 'Not_Received'")
         
+    def _cmd_random_shop_card(self, state: str = None) -> None:
+        """
+        Update whether each shop pool has a guaranteed random unpurchased card present.
+        If no argument is given, will list the current state.
+        :param active: If "on" or "true", enable this option, If "off" or "false", disable this option.
+        """
+
+        if state != None:
+            if state.lower() in ["true", "on", "enable"]:
+                logger.info(f"Guarantee Unpurchased Card Per Shop Pool: Enabled")
+                self.ctx.random_card_per_shop = True
+            elif state.lower() in ["false", "off", "disable"]:
+                logger.info(f"Guarantee Unpurchased Card Per Shop Pool: Disabled")
+                self.ctx.random_card_per_shop = False
+            else:
+                logger.info(f"Invalid argument given. Use 'on' or 'off'")
+        else:
+            logger.info(f"Guarantee Unpurchased Card Per Shop Pool Status: {self.ctx.random_card_per_shop}")
 
             
 class TouhouUMContext(CommonContext):
@@ -282,6 +300,7 @@ class TouhouUMContext(CommonContext):
 
         # Gameplay-related variables
         self.checked_if_owns_stage = False
+        self.random_card_per_shop = False
 
         self.unlocked_characters: list = []
         self.unlocked_cards: list = []
@@ -336,6 +355,7 @@ class TouhouUMContext(CommonContext):
         self.location_id_to_ending_mapping = []
 
         self.checked_if_owns_stage = False
+        self.random_card_per_shop = False
 
         self.location_semaphore_in_use = False
 
@@ -1254,7 +1274,8 @@ class TouhouUMContext(CommonContext):
                                 self.handler.disableCard(shop_card_list[i])
 
                         # Add new shop items.
-                        self.handler.addShopCard(self.handler.getRandomUnpurchasedCard(shop_card_id_list))
+                        if self.random_card_per_shop:
+                            self.handler.addShopCard(self.handler.getRandomUnpurchasedCard(shop_card_id_list))
 
                 # Leaving Shop    
                 elif currently_in_shop:
@@ -1744,6 +1765,8 @@ async def game_watcher(ctx):
         ctx.deathlink_trigger = ctx.options["deathlink_trigger"]  
 
         ctx.deathlink_amnesty = ctx.options["deathlink_amnesty"]
+
+        ctx.random_card_per_shop = bool(ctx.options["new_card_per_shop"])
 
         if ctx.options["ring_link"]:
             ctx.ring_link_enabled = True

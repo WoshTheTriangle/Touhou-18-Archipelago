@@ -82,6 +82,6 @@ class TouhouUMWorld(World):
             "max_life_item", "init_max_bombs", 
             "max_bomb_item", "deathlink", 
             "deathlink_trigger", "deathlink_amnesty",
-            "ring_link"
+            "ring_link", "new_card_per_shop"
         )
         return data
