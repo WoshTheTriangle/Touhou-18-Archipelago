@@ -4,6 +4,7 @@ from .variables.stage_constants import *
 from .variables.address_shop import *
 from .variables.option_constants import *
 from .Tools import clamp
+import random
 
 class GameHandler:
     gameController = None
@@ -679,6 +680,21 @@ class GameHandler:
     def setCardID(self, cardPtr: int, newVal: int) -> None:
         self.gameController.setCardID(cardPtr, newVal)
 
+    def getRandomUnpurchasedCard(self, exclude_list: list) -> int:
+        unpurchased_list = []
+        for i in range(7, 51):
+            if (i == 9 or i == 11 or i == 13 or i == 15): continue
+            if (i >= 38 and i <= 40): continue
+
+            if not self.cardsPurchased[i] and i not in exclude_list:
+                unpurchased_list.append(i)
+
+        # All cards have been purchased.
+        if len(unpurchased_list) == 0:
+            return -1
+
+        return random.choice(unpurchased_list)
+
     '''
     Shop Settings
     '''
@@ -687,12 +703,12 @@ class GameHandler:
         numCards = self.gameController.getShopCardCount()
         return self.gameController.getShopCards(numCards)
 
-    def doesShopContainCard(self, shop_card_id) -> bool:
+    def doesShopContainCard(self, shop_card_id: int) -> bool:
         card_list = self.getShopCards()
         return card_list.count(self.gameController.pm.base_address + shop_card_id) > 0
 
     # Use the shop addresses found in address_shop.py for both shop card IDs
-    def setShopCard(self, original_shop_card_id, new_shop_card_id) -> None:
+    def setShopCard(self, original_shop_card_id: int, new_shop_card_id: int) -> None:
         new_shop_card_id += self.gameController.pm.base_address
         #original_shop_card_id += self.gameController.pm.base_address
         card_list = self.getShopCards()
@@ -706,5 +722,15 @@ class GameHandler:
         if(pos >= 0 and pos < self.gameController.getShopCardCount()):
             self.gameController.setShopCard(pos, new_shop_card_id)
 
-    def disableCard(self, shop_card_id) -> None:
+    def disableCard(self, shop_card_id: int) -> None:
         self.setShopCard(shop_card_id, NULL_SHOP_ADDR)
+
+    # Inserts a card into the shop card list (Will only work on shop initialization).
+    def addShopCard(self, card_id: int) -> None:
+        if(card_id == -1): return # Null Case
+
+        shop_card_id = CARD_ID_TO_SHOP_CARD_ID[card_id] + self.gameController.pm.base_address
+        cardCount = self.gameController.getShopCardCount()
+
+        self.gameController.setShopCardCount(cardCount + 1)
+        self.gameController.setShopCard(cardCount, shop_card_id)

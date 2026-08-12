@@ -1071,8 +1071,8 @@ class TouhouUMContext(CommonContext):
                         if contains_patchy:
                             init_bombs += 1
 
-                        self.handler.setLives(init_lives)
-                        self.handler.setBombs(init_bombs)
+                        self.handler.setLives(min(init_lives, self.handler.max_lives))
+                        self.handler.setBombs(min(init_bombs, self.handler.max_bombs))
 
                         given_resources = True
                         
@@ -1252,6 +1252,9 @@ class TouhouUMContext(CommonContext):
 
                             if(shop_card_id_list[i] == BLANK_CARD and not self.handler.cardsUnlocked[BLANK_CARD]):
                                 self.handler.disableCard(shop_card_list[i])
+
+                        # Add new shop items.
+                        self.handler.addShopCard(self.handler.getRandomUnpurchasedCard(shop_card_id_list))
 
                 # Leaving Shop    
                 elif currently_in_shop:

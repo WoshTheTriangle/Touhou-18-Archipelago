@@ -451,6 +451,13 @@ class GameController:
         shopCount = getPointerAddress(self.pm, self.shopPtr, ADDR_SHOP_ITEM_COUNT_OFFSET)
         return self.pm.read_int(shopCount)
 
+    def setShopCardCount(self, new_count: int) -> None:
+        shopCount = getPointerAddress(self.pm, self.shopPtr, ADDR_SHOP_ITEM_COUNT_OFFSET)
+        self.pm.write_int(shopCount, new_count)
+
+        borderVal = getPointerAddress(self.pm, self.shopPtr, ADDR_SHOP_CURSOR_RIGHT_EDGE_OFFSET)
+        self.pm.write_int(borderVal, new_count)
+
     # Return all addresses found in the shop, they are stored in an array.
     def getShopCards(self, numCards: int) -> list:
         cards = []
