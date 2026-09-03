@@ -666,7 +666,7 @@ class GameHandler:
         return self.cardSlots
 
     def get_extra_unlock_status(self, character: int) -> bool:
-        return self.stagesUnlocked[character][7]
+        return self.stagesUnlocked[character][7] and self.charactersUnlocked[character]
 
     def add_to_unlocked_card_count(self) -> None:
         self.unlocked_card_count += 1

@@ -32,7 +32,7 @@ ADDR_MENU_SELECT = [0x24]
 ADDR_SPELLCARD_PRACTICE_CHAR_SELECT = [0x5CE0]
 
 ADDR_MENU_RESTRICT_HEAD_OFFSET = [0xB4] # Array of size 4
-ADDR_MENU_RESTRICT_SIZE_OFFSET = [0xF4] # Entry point, exit point is +4
+ADDR_MENU_RESTRICT_SIZE_OFFSET = [0xF4] # Wrap around point, +4 is the count of disabled selections.
 
 '''
 Scorefile offsets

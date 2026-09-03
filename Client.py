@@ -161,14 +161,14 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
 
         logger.info(f"Ring Link status: {self.ctx.ring_link_enabled}")
 
-    def _cmd_cards(self, new_state: str = None) -> None:
+    def _cmd_cards(self, *new_state: str) -> None:
         """
         Send the state of cards purchased or received in your Touhou 18 world.
         If no argument is given, will default to listing cards that have not been purchased.
         :param trigger: If "Purchased" or will list cards that have been purchased.
-                        If "Not_Purchased" or will list cards that have not been purchased.
+                        If "Not Purchased" or will list cards that have not been purchased.
                         If "Received" will list all cards that have been received by the multiworld.
-                        If "Not_Received" will list all cards that have not received by the multiworld.
+                        If "Not Received" will list all cards that have not received by the multiworld.
         """
         
         if not self.ctx.is_connected:
@@ -180,7 +180,9 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
             return
 
         count = 0
-        if state == None or state.lower() in ["not_purchased", "false"]:
+        state = " ".join(new_state)
+
+        if state == "" or state.lower() in ["not purchased", "false"]:
             logger.info("Cards Not Purchased:")
 
             for id in self.ctx.missing_locations:
@@ -223,7 +225,7 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
                     logger.info(card_name)
                     count += 1
             logger.info(f"Number of cards received: {count}/52")
-        elif state.lower() in ["not_received", "not_unlocked"]:
+        elif state.lower() in ["not received", "not unlocked"]:
             logger.info("Cards Not Received:")
 
             for i in range(1, 55):
@@ -235,7 +237,7 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
                     count += 1
             logger.info(f"Number of cards received: {count}/52")
         else:
-            logger.info("Incorrect argument given. Use 'Purchased', 'Not_Purchased', 'Received', or 'Not_Received'")
+            logger.info("Incorrect argument given. Use 'Purchased', 'Not Purchased', 'Received', or 'Not Received'")
         
     def _cmd_random_shop_card(self, state: str = None) -> None:
         """
@@ -255,6 +257,54 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
                 logger.info(f"Invalid argument given. Use 'on' or 'off'")
         else:
             logger.info(f"Guarantee Unpurchased Card Per Shop Pool Status: {self.ctx.random_card_per_shop}")
+
+    def _cmd_set_shop_card(self, *state: str) -> None:
+        """
+        Set a guaranteed card to appear in the shop.
+        If no argument is given, will list the current state.
+        :param trigger: Write down the card name or the name of the character who the card is associated with.
+        """
+
+        # In case I add a limited amount of sets, the player should not be able to work around it by switching in the shop.
+        if self.ctx.handler and self.ctx.handler.get_game_state() == IN_SHOP:
+            logger.info("Cannot change the set shop card while in a shop.")
+            return
+
+        if len(state) != 0:
+            state_lowercase = " ".join(state)
+            state_lowercase = state_lowercase.lower()
+            logger.info(state_lowercase)
+
+            # Character name
+            if state_lowercase in CHARACTER_NAME_TO_CARD_ID.keys():
+                card_id = CHARACTER_NAME_TO_CARD_ID[state_lowercase]
+                card_name = CARD_ID_TO_NAME[card_id]
+
+                if card_name in STAGE_EXCLUSIVE_SHOP_CARDS and card_name != MOMOYO_CARD_NAME:
+                    logger.info("Cannot be set to stage exclusive cards.")
+                elif card_name == MOMOYO_CARD_NAME:
+                    logger.info("Cannot be set to cards that must be unlocked.")
+                else:
+                    self.ctx.set_shop_card = card_id
+                    logger.info(f"{CARD_ID_TO_NAME[card_id]} will appear in the next shop.")
+                return
+
+            # Card Name
+            closest_card = next((card for card in CARD_NAME_LIST if card.lower().startswith(state_lowercase)), None)
+             
+            if closest_card in STAGE_EXCLUSIVE_SHOP_CARDS and closest_card != MOMOYO_CARD_NAME:
+                logger.info("Cannot be set to stage exclusive cards.")
+            elif closest_card in POST_VICTORY_CARDS or closest_card == MOMOYO_CARD_NAME:
+                logger.info("Cannot be set to cards that must be unlocked.")
+            elif closest_card in CARD_NAME_LIST:
+                card_id = NAME_TO_CARD_ID[closest_card]
+                self.ctx.set_shop_card = card_id
+                logger.info(f"{closest_card} will appear in the next shop.")
+            else:
+                logger.info("Invalid card name.")
+            
+        else:
+            logger.info(f"Set Card Status: {CARD_ID_TO_NAME.get(self.ctx.set_shop_card, None)}")
 
             
 class TouhouUMContext(CommonContext):
@@ -301,6 +351,7 @@ class TouhouUMContext(CommonContext):
         # Gameplay-related variables
         self.checked_if_owns_stage = False
         self.random_card_per_shop = False
+        self.set_shop_card = None
 
         self.unlocked_characters: list = []
         self.unlocked_cards: list = []
@@ -1426,7 +1477,7 @@ class TouhouUMContext(CommonContext):
 
                         '''
                         Additional Location Check upon entering the menu.
-                        '''   
+                        '''
 
                         await self.update_locations_checked()
 
@@ -1443,11 +1494,10 @@ class TouhouUMContext(CommonContext):
                         if current_menu_state != CHARACTER_SELECT:
                             await asyncio.sleep(0.1)
                             current_menu_state = CHARACTER_SELECT
-                            if selected_difficulty != 4: # Separate lock if in the extra stage select.
+                            if selected_difficulty != 4: # Don't lock if in extra stage select.
                                 self.handler.setCharacterRestrict()
-                            else:
-                                self.handler.setExtraCharacterRestrict()
-
+                            # Originally, setExtraCharacterRestrict was put here but has been removed due to being irrelevant.
+                            # I am keeping the function just in case something happens and I'll need it again.
                         
                         # Player entered a difficulty they do not have access to, fix it.
                         if not self.handler.isDifficultyUnlocked(selected_difficulty):
