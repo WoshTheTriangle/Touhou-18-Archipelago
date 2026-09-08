@@ -26,6 +26,29 @@ from .Items import *
 from .variables import stage_constants, card_constants
 from .Tools import *
 
+def get_fuzzy_name(input_word: str, input_list: list[str]) -> list[tuple[str, int]]:
+    """
+    Helper function for the set_shop_card command. 
+    This selects the closest input from a list and returns the input and it's percentage of accuracy as a tuple.
+    """
+    import jellyfish
+    max_percent = 0
+    return_word = None
+    
+    def get_fuzzy_ratio(word1: str, word2: str) -> float:
+        if word1 == word2:
+            return 1.01
+        
+        return (1 - jellyfish.damerau_levenshtein_distance(word1.lower(), word2.lower())/max(len(word1), len(word2)))
+
+    for word in input_list:
+        fuzzy_percent = get_fuzzy_ratio(input_word, word)
+        if fuzzy_percent > max_percent:
+            max_percent = fuzzy_percent
+            return_word = word
+
+    return (return_word, int(max_percent * 100))
+
 def get_death_link_message(deathlink_trigger: int = DEATHLINK_TRIGGER_LIFE) -> str:
     if DEATHLINK_TRIGGER_GAMEOVER: return random.choice(DEATH_LINK_GAMEOVER_MSGS + DEATH_LINK_GENERIC_MSGS)
     else: return random.choice(DEATH_LINK_LIFE_MSGS + DEATH_LINK_GENERIC_MSGS)
@@ -34,10 +57,12 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
     def __init__(self, ctx):
         super().__init__(ctx)
 
+
     def _cmd_deathlink(self, new_state: str = None) -> None:
         """
         Toggle Death Link on or off.
         If no arguments are given, will respond with current Death Link status.
+
         :param active: If "on" or "true", enable Death Link. If "off" or "false", disable Death Link.
         """
         changed = False
@@ -77,6 +102,7 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
     def _cmd_deathlink_trigger(self, trigger: str = None) -> None:
         """
         Get or set when a Death Link is triggered. Leave blank to check status.
+
         :param trigger: Upon Life Loss ("life"), Upon Game Over ("game_over").
         """
         if not self.ctx.is_connected:
@@ -108,6 +134,7 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
         """
         Get or Set the number of death before sending a Death Link.
         If no arguments are given, will respond with the current amnesty count.
+
         :param value: Set the amnesty to this value, must be between 0 and 10.
         """
         if not self.ctx.is_connected:
@@ -131,6 +158,7 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
         """
         Toggle Ring Link on or off.
         If no arguments are given, will respond with the current state of Ring Link.
+
         :param active: If "on" or "true", enable Ring Link. If "off" or "false", disable Ring Link.
         """
         changed = False
@@ -165,6 +193,7 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
         """
         Send the state of cards purchased or received in your Touhou 18 world.
         If no argument is given, will default to listing cards that have not been purchased.
+
         :param trigger: If "Purchased" or will list cards that have been purchased.
                         If "Not Purchased" or will list cards that have not been purchased.
                         If "Received" will list all cards that have been received by the multiworld.
@@ -243,6 +272,7 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
         """
         Update whether each shop pool has a guaranteed random unpurchased card present.
         If no argument is given, will list the current state.
+
         :param active: If "on" or "true", enable this option, If "off" or "false", disable this option.
         """
 
@@ -260,52 +290,70 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
 
     def _cmd_set_shop_card(self, *state: str) -> None:
         """
-        Set a guaranteed card to appear in the shop.
-        If no argument is given, will list the current state.
-        :param trigger: Write down the card name or the name of the character who the card is associated with.
+        Set a guaranteed card to appear in the shop. Cannot set to cards that have been purchased or must be unlocked.
+        The amount of sets allowed is only lowered after purchasing the card that was set. The count will not lower if the card naturally appeared in the shop.
+        If no argument is given, will list the current state and amount of sets remaining.
+
+        :param trigger: Input the card name or the name of the character who the card is associated with.
         """
 
-        # In case I add a limited amount of sets, the player should not be able to work around it by switching in the shop.
-        if self.ctx.handler and self.ctx.handler.get_game_state() == IN_SHOP:
+        if not self.ctx.is_connected:
+            logger.info("Not connected to the server.")
+            return
+
+        if not self.ctx.handler:
+            logger.info("Not connected to a Touhou 18 process")
+            return
+
+        if self.ctx.handler.get_game_state() == IN_SHOP:
             logger.info("Cannot change the set shop card while in a shop.")
             return
 
         if len(state) != 0:
-            state_lowercase = " ".join(state)
-            state_lowercase = state_lowercase.lower()
-            logger.info(state_lowercase)
+            full_state = " ".join(state)
 
-            # Character name
-            if state_lowercase in CHARACTER_NAME_TO_CARD_ID.keys():
-                card_id = CHARACTER_NAME_TO_CARD_ID[state_lowercase]
+            if self.ctx.set_shop_card_remaining <= 0:
+                logger.info("Unable to set a card. No more sets remain.")
+                return
+
+            # Character Name
+            fuzzy_state = get_fuzzy_name(full_state, CHARACTER_NAME_TO_CARD_ID.keys())
+            if fuzzy_state[1] > 65:
+                card_id = CHARACTER_NAME_TO_CARD_ID[fuzzy_state[0]]
                 card_name = CARD_ID_TO_NAME[card_id]
 
-                if card_name in STAGE_EXCLUSIVE_SHOP_CARDS and card_name != MOMOYO_CARD_NAME:
-                    logger.info("Cannot be set to stage exclusive cards.")
-                elif card_name == MOMOYO_CARD_NAME:
-                    logger.info("Cannot be set to cards that must be unlocked.")
+                if card_name in STAGE_EXCLUSIVE_SHOP_CARDS:
+                    logger.info(f"{card_name} is a stage exclusive card.")
+                elif card_name == MOMOYO_CARD_NAME or card_name == BLANK_CARD_NAME:
+                    logger.info(f"{card_name} must be unlocked.")
+                elif self.ctx.handler.hasCardBeenPurchased(card_id):
+                    logger.info(f"{card_name} has already been purchased.")
                 else:
                     self.ctx.set_shop_card = card_id
                     logger.info(f"{CARD_ID_TO_NAME[card_id]} will appear in the next shop.")
                 return
 
             # Card Name
-            closest_card = next((card for card in CARD_NAME_LIST if card.lower().startswith(state_lowercase)), None)
-             
-            if closest_card in STAGE_EXCLUSIVE_SHOP_CARDS and closest_card != MOMOYO_CARD_NAME:
-                logger.info("Cannot be set to stage exclusive cards.")
-            elif closest_card in POST_VICTORY_CARDS or closest_card == MOMOYO_CARD_NAME:
-                logger.info("Cannot be set to cards that must be unlocked.")
-            elif closest_card in CARD_NAME_LIST:
+            fuzzy_state = get_fuzzy_name(full_state, CARD_NAME_LIST)
+            if fuzzy_state[1] > 65:
+                closest_card = fuzzy_state[0]
                 card_id = NAME_TO_CARD_ID[closest_card]
-                self.ctx.set_shop_card = card_id
-                logger.info(f"{closest_card} will appear in the next shop.")
+                if closest_card in STAGE_EXCLUSIVE_SHOP_CARDS:
+                    logger.info(f"{closest_card} is a stage exclusive card.")
+                elif (closest_card in POST_VICTORY_CARDS or closest_card == MOMOYO_CARD_NAME 
+                    or closest_card == BLANK_CARD_NAME or closest_card == MAGATAMA_CARD_NAME):
+                    logger.info(f"{closest_card} must be unlocked.")
+                elif self.ctx.handler.hasCardBeenPurchased(card_id):
+                    logger.info(f"{closest_card} has already been purchased.")
+                else:
+                    self.ctx.set_shop_card = card_id
+                    logger.info(f"{closest_card} will appear in the next shop.")
             else:
-                logger.info("Invalid card name.")
+                logger.info(f"Invalid card name.")
             
         else:
             logger.info(f"Set Card Status: {CARD_ID_TO_NAME.get(self.ctx.set_shop_card, None)}")
-
+            logger.info(f"Amount Remaining: {self.ctx.set_shop_card_remaining}")
             
 class TouhouUMContext(CommonContext):
     """Touhou 18 Game Context"""
@@ -347,6 +395,9 @@ class TouhouUMContext(CommonContext):
         self.previous_location_checked: list = []
 
         self.command_processor = TouhouUMClientProcessor
+
+        self.set_shop_card_remaining = 0
+        self.set_shop_card_max_count = 0
 
         # Gameplay-related variables
         self.checked_if_owns_stage = False
@@ -405,8 +456,11 @@ class TouhouUMContext(CommonContext):
         self.location_id_to_card_id = []
         self.location_id_to_ending_mapping = []
 
+        self.set_shop_card_remaining = 0
+
         self.checked_if_owns_stage = False
         self.random_card_per_shop = False
+        self.set_shop_card = None
 
         self.location_semaphore_in_use = False
 
@@ -540,7 +594,8 @@ class TouhouUMContext(CommonContext):
 
 
             self.slot = args["slot"]
-            self.custom_data_keys_list = [f"{str(self.team)}_{str(self.slot)}_LastItemIndexTH18"] 
+            self.custom_data_keys_list = [f"{str(self.team)}_{str(self.slot)}_LastItemIndexTH18",
+                                        f"{str(self.team)}_{str(self.slot)}_SetCardShopCountTH18"] 
 
             self.stage_location_mappings = getStageLocationMapping(self.options["difficulty_check"])
             self.location_id_to_card_id = getAPIDsForCards()
@@ -569,9 +624,14 @@ class TouhouUMContext(CommonContext):
                 self.retrieved_last_item_id = True
                 if not args["keys"][self.custom_data_keys_list[0]] is None:
                     self.last_received_item_index_server = args["keys"][self.custom_data_keys_list[0]]
-                    print(self.last_received_item_index_server)
                 else:
                     self.last_received_item_index_server = -1
+
+            if self.custom_data_keys_list[1] in args["keys"]:
+                if not args["keys"][self.custom_data_keys_list[1]] is None:
+                    self.set_shop_card_remaining = args["keys"][self.custom_data_keys_list[1]]
+                else:
+                    self.set_shop_card_remaining = self.set_shop_card_max_count
 
         elif cmd == "DataPackage": 
             if not self.all_location_ids:
@@ -611,6 +671,7 @@ class TouhouUMContext(CommonContext):
         Request custom data upon client initialization.
         """
         await self.send_msgs([{"cmd": "Get", "keys": [self.custom_data_keys_list[0]]}])
+        await self.send_msgs([{"cmd": "Get", "keys": [self.custom_data_keys_list[1]]}])
 
     async def update_last_item_id(self):
         """
@@ -627,6 +688,18 @@ class TouhouUMContext(CommonContext):
                       }]
         await self.send_msgs(index_msg)
         asyncio.create_task(confirm_data_sent())
+
+    async def update_set_shop_remaining(self):
+        """
+        Send the updated count of shop cards that can be set to the server.
+        """
+        index_msg = [{"cmd": "Set",
+                      "key": self.custom_data_keys_list[1],
+                      "want_reply": False,
+                      "default": 0,
+                      "operations": [{"operation": "replace", "value": self.set_shop_card_remaining}]
+                      }]
+        await self.send_msgs(index_msg)
 
     async def confirm_data_sent(self):
         """
@@ -1313,6 +1386,10 @@ class TouhouUMContext(CommonContext):
                         if BLANK_CARD in player_card_list:
                             blank_card_state = True
 
+                        # Add random unpurchased card.
+                        if self.random_card_per_shop:
+                            self.handler.addShopCard(self.handler.getRandomUnpurchasedCard(shop_card_id_list))
+
                         # Disabling cards that have been purchased before but are not unlocked.
                         shop_card_list = self.handler.getShopCards()
                         shop_card_id_list = self.handler.shop_card_id_to_card_id(shop_card_list)
@@ -1324,9 +1401,9 @@ class TouhouUMContext(CommonContext):
                             if(shop_card_id_list[i] == BLANK_CARD and not self.handler.cardsUnlocked[BLANK_CARD]):
                                 self.handler.disableCard(shop_card_list[i])
 
-                        # Add new shop items.
-                        if self.random_card_per_shop:
-                            self.handler.addShopCard(self.handler.getRandomUnpurchasedCard(shop_card_id_list))
+                        # Add set card.
+                        if self.set_shop_card != None:
+                            self.handler.addShopCard(self.set_shop_card)
 
                 # Leaving Shop    
                 elif currently_in_shop:
@@ -1334,6 +1411,13 @@ class TouhouUMContext(CommonContext):
                     currently_in_shop = False
                     new_card_list = self.handler.getHeldCards()
                     card_addresses = self.handler.getCardAddresses()
+
+                    # Shop cards can only be set to cards the player has not purchased yet.
+                    if self.set_shop_card in new_card_list:
+                            # Set shop card count will not go down if this is the case
+                        self.set_shop_card = None
+                        if(self.set_shop_card not in shop_card_id_list):
+                            self.set_shop_card_remaining -= 1
 
                     # Undo the effects of Phoenix's Tail if you do not have it received.
                     if MOKOU_CARD in new_card_list:
@@ -1366,9 +1450,10 @@ class TouhouUMContext(CommonContext):
                         # Life and Bomb items will edit the GUI so we want it to exist before messing with them.
                         while not self.handler.guiExists():
                             await asyncio.sleep(0.5)
-                            
+
                         if (not self.handler.hasCardBeenPurchased(LIFE_CARD) 
                         and self.handler.getCardUnlockedState(LIFE_CARD)): 
+                            self.set_shop_card = None
                             self.handler.purchaseCard(LIFE_CARD)
                             if not self.handler.hasCardBeenReceived(LIFE_CARD):
                                 self.handler.setLives(player_lives)
@@ -1376,6 +1461,7 @@ class TouhouUMContext(CommonContext):
 
                         if (not self.handler.hasCardBeenPurchased(BOMB_CARD) 
                         and self.handler.getCardUnlockedState(BOMB_CARD)): 
+                            self.set_shop_card = None
                             self.handler.purchaseCard(BOMB_CARD)
                             if not self.handler.hasCardBeenReceived(BOMB_CARD):
                                 self.handler.setBombs(player_bombs)
@@ -1383,6 +1469,7 @@ class TouhouUMContext(CommonContext):
 
                         if (not self.handler.hasCardBeenPurchased(NAZRIN_CARD) 
                         and self.handler.getCardUnlockedState(NAZRIN_CARD)): 
+                            self.set_shop_card = None
                             self.handler.purchaseCard(NAZRIN_CARD)
                             if not self.handler.hasCardBeenReceived(NAZRIN_CARD):
                                 self.handler.addFunds(-50)
@@ -1390,7 +1477,9 @@ class TouhouUMContext(CommonContext):
 
                         if (not self.handler.hasCardBeenPurchased(RINGO_CARD) 
                         and self.handler.getCardUnlockedState(RINGO_CARD)):
+                            self.set_shop_card = None
                             self.handler.purchaseCard(RINGO_CARD)
+
                             if not self.handler.hasCardBeenReceived(RINGO_CARD):
                                 self.handler.setPower(current_power)
                                 self.handler.setCardUnlockState(RINGO_CARD, False) 
@@ -1410,6 +1499,7 @@ class TouhouUMContext(CommonContext):
                             self.handler.setCardID(card_addresses[i], MIKE_CARD)
                     
                     await self.update_locations_checked()
+                    await self.update_set_shop_remaining()
 
                     blank_card_state = False
         except Exception as e:
@@ -1757,6 +1847,8 @@ async def game_watcher(ctx):
             await ctx.wait_for_initial_connection_info()
 
         else:
+            ctx.set_shop_card_max_count = ctx.options["set_shop_card_count"]
+
             # Receive server data
             if not ctx.retrieved_last_item_id:
                 try:

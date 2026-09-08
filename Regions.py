@@ -31,7 +31,7 @@ def generate_regions(world, exclude_lunatic, extra_stage_acquire, split_by_diffi
     init_region = Region("Menu", world.player, world.multiworld)
     region_list.append(init_region)
 
-    special_cards = STAGE_EXCLUSIVE_SHOP_CARDS + EXPENSIVE_CARDS + POST_VICTORY_CARDS
+    special_cards = STAGE_EXCLUSIVE_SHOP_CARDS + EXPENSIVE_CARDS + POST_VICTORY_CARDS + [MOMOYO_CARD_NAME, BLANK_CARD_NAME, MAGATAMA_CARD_NAME]
 
     card_names = [name for name in NAME_TO_CARD_ID if name not in special_cards]
     card_location_names = [f"Purchased {card_name}" for card_name in card_names]

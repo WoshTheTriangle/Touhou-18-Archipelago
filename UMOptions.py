@@ -2,21 +2,6 @@ from dataclasses import dataclass
 import Options
 from Options import *
 
-'''
-class Mode(Choice):
-    """
-    The mode being played on.
-    Normal Mode: Regular Touhou 18 with unlocks for purchasing cards. 
-                 Each stage must be unlocked in order to progress.
-    Practice Mode: Unlock each stage in order to progress. 
-    """
-    display_name = "Game Mode"
-
-    option_normal = 0
-    option_practice = 2
-    default = 0
-'''
-
 class StageUnlock(Choice):
     """
     How stages are unlocked.
@@ -28,17 +13,6 @@ class StageUnlock(Choice):
     option_global = 0
     option_per_character = 2
     default = 0
-
-class GuaranteeUnpurchasedCardPerShop(Toggle):
-    """
-    Guarantee that every shop pool has at least one unpurchased card present.
-    This card will be the rightmost one and unique to all the other cards in the pool.
-    No card will be created if all cards have already been purchased or no more unique unpurchased cards can exist.
-    Can be changed later.
-    """
-    display_name = "Guarantee Unpurchased Card Per Shop"
-
-    default = True
 
 class ExtraStage(Choice):
     """
@@ -103,7 +77,7 @@ class EndingsRequired(Range):
     If Ability Cards was not chosen:
     Amount of characters required to complete the ending conditions to achieve the goal.
     """
-    display_name = "Amount of characters needed to beat goal bosses"
+    display_name = "Amount of Characters Needed to Beat Goal Bosses"
     range_start = 1
     range_end = 4
     default = 1
@@ -113,7 +87,7 @@ class CardsRequired(Range):
     If Ability Cards or All was chosen:
     The amount of ability cards required to achieve the goal.
     """
-    display_name = "Amount of ability cards required to complete the goal"
+    display_name = "Amount of Ability Cards Required to Complete The Goal"
     range_start = 1
     range_end = 52
     default = 30
@@ -136,6 +110,30 @@ class ExcludeLunatic(Toggle):
     Exclude the Lunatic Difficulty, starting off at Hard instead.
     """
     display_name = "Exclude Lunatic"
+
+class GuaranteeUnpurchasedCardPerShop(Toggle):
+    """
+    Guarantee that every shop pool has at least one unpurchased card present.
+    This card will be the rightmost one and unique to all the other cards in the pool.
+    No card will be created if all cards have already been purchased or no more unique unpurchased cards can exist.
+    Can be changed later.
+    """
+    display_name = "Guarantee Unpurchased Card Per Shop"
+
+    default = True
+
+class GuaranteeCardPerShopCount(Range):
+    """
+    Amount of times an unpurchased card can be set to appear at the shop guaranteed.
+    This can be done with the /set_shop_card command in the client.
+        Stage exclusive cards and cards which must be unlocked cannot be set.
+    The count will only lower if the card that was set is purchased and did not appear naturally in the shop.
+    """
+    display_name = "Amount of Cards That Can Be Set in The Shop"
+
+    range_start = 0
+    range_end = 52
+    default = 10
 
 class InitLivesLimit(Range):
     """
@@ -221,7 +219,6 @@ class TrapChance(Range):
 class Th18Options(PerGameCommonOptions):
     trap_chance: TrapChance
     stage_unlock: StageUnlock
-    new_card_per_shop: GuaranteeUnpurchasedCardPerShop
     extra_stage: ExtraStage
     magatama_req: MagatamaRequirement
     blank_card_req: BlankCardRequirement
@@ -231,6 +228,8 @@ class Th18Options(PerGameCommonOptions):
     difficulty_check: DifficultyCheck
     check_mult_difficulties: CheckMultipleDifficulty
     exclude_lunatic: ExcludeLunatic
+    new_card_per_shop: GuaranteeUnpurchasedCardPerShop
+    set_shop_card_count: GuaranteeCardPerShopCount
     init_max_lives: InitLivesLimit
     max_life_item: MaxLifeItem
     init_max_bombs: InitBombsLimit
