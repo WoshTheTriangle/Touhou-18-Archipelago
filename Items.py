@@ -73,6 +73,12 @@ def create_all_items(world) -> None:
                 item_pool.append(world.create_item(item))
             continue
 
+        # Adding continues.
+        if data.code == 3:
+            for i in range(world.options.continue_item_count):
+                item_pool.append(world.create_item(item))
+            continue
+
         # Adding max lives
         if data.code == 12 and world.options.max_life_item:
             for i in range(7 - world.options.init_max_lives):

@@ -169,6 +169,16 @@ class MaxBombItem(Toggle):
     """
     display_name = "Toggle Max Bomb Increase Items"
 
+class AmountOfContinues(Range):
+    """
+    Amount of '+1 Continue' items that will be placed in the multiworld item pool.
+    """
+    display_name = "Number of +1 Continue Items"
+
+    range_start = 0
+    range_end = 5
+    default = 5
+
 class DeathLink(Toggle):
     """
     When you die, everyone else with death link enabled also dies. Same goes the other way. 
@@ -234,6 +244,7 @@ class Th18Options(PerGameCommonOptions):
     max_life_item: MaxLifeItem
     init_max_bombs: InitBombsLimit
     max_bomb_item: MaxBombItem
+    continue_item_count: AmountOfContinues
     deathlink: DeathLink
     deathlink_trigger: DeathLinkTrigger
     deathlink_amnesty: DeathLinkAmnesty

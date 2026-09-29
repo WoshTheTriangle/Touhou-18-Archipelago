@@ -57,7 +57,7 @@ class TouhouUMWorld(World):
 
     def set_rules(self) -> None:
         Rules.set_all_rules(self)
-
+  
     def create_regions(self) -> None:
         Regions.create_and_connect_regions(self)
         #Locations.create_all_locations(self)
@@ -83,6 +83,7 @@ class TouhouUMWorld(World):
             "max_bomb_item", "deathlink", 
             "deathlink_trigger", "deathlink_amnesty",
             "ring_link", "new_card_per_shop",
-            "set_shop_card_count"
+            "set_shop_card_count", "continue_item_count"
         )
+
         return data

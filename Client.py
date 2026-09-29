@@ -69,7 +69,7 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
 
         if not self.ctx.is_connected:
             logger.info("Not connected to the server.")
-            return
+            return False
 
         if new_state != None:
             if new_state.lower() in ["on", "true", "enable"]:  
@@ -85,50 +85,58 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
                     changed = True
                 logger.info("Death Link Disabled")
             else:
-                logger.info("Invalid argument, use 'on' or 'off'")
+                logger.error("Invalid argument, use 'on' or 'off'")
 
             if changed:
                 asyncio.create_task(self.ctx.send_msgs([{"cmd": "ConnectUpdate", "tags": self.ctx.tags}]))
-            return
+            
 
         logger.info(f"Death Link status: {self.ctx.deathlink_enabled}")
-        if not self.ctx.deathlink_enabled: return
+        if not self.ctx.deathlink_enabled: return changed
 
         if self.ctx.deathlink_trigger == DEATHLINK_TRIGGER_LIFE:
             logger.info("Death Link on Life Loss")
         elif self.ctx.deathlink_trigger == DEATHLINK_TRIGGER_GAMEOVER:
             logger.info("Death Link on Game Over")
+        return changed
 
-    def _cmd_deathlink_trigger(self, trigger: str = None) -> None:
+    def _cmd_deathlink_trigger(self, *trigger: str) -> None:
         """
         Get or set when a Death Link is triggered. Leave blank to check status.
 
-        :param trigger: Upon Life Loss ("life"), Upon Game Over ("game_over").
+        :param trigger: Upon Life Loss ("life"), Upon Game Over ("game over").
         """
+
+        trigger = " ".join(trigger)
+
         if not self.ctx.is_connected:
-            logger.info("Not connected to the server.")
-            return
+            logger.error("Not connected to the server.")
+            return False
 
         if not self.ctx.deathlink_enabled:
-            logger.info("Deathlink is not enabled.")
-            return
+            logger.error("Deathlink is not enabled.")
+            return False
 
-        if trigger is None:
+        if trigger == "":
             if self.ctx.deathlink_trigger == DEATHLINK_TRIGGER_LIFE:
                 logger.info("Death Link on Life Loss")
             elif self.ctx.deathlink_trigger == DEATHLINK_TRIGGER_GAMEOVER:
                 logger.info("Death Link on Game Over")
             else:
-                logger.info("Death Link Condition is Unknown")
+                logger.error("Death Link Condition is Unknown")
+                return False
         else:
             if trigger.lower() in ["life"]:
                 self.ctx.deathlink_trigger = DEATHLINK_TRIGGER_LIFE
                 logger.info("Death Link Condition has been set to: 'Life Loss'")
-            elif trigger.lower() in ["game_over"]:
+            elif trigger.lower() in ["game over"]:
                 self.ctx.deathlink_trigger = DEATHLINK_TRIGGER_GAMEOVER
                 logger.info("Death Link Condition has been set to: 'Game Over'")
             else:
-                logger.info("Invalid Death Link trigger argument")
+                logger.error("Invalid Death Link trigger argument. Use 'life' or 'game over'")
+                return False
+
+        return True
 
     def _cmd_deathlink_amnesty(self, value: int = -1) -> None:
         """
@@ -138,21 +146,24 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
         :param value: Set the amnesty to this value, must be between 0 and 10.
         """
         if not self.ctx.is_connected:
-            logger.info("Not connected to the server.")
-            return
+            logger.error("Not connected to the server.")
+            return False
 
         if self.ctx.handler is not None and self.ctx.handler.gameController is not None:
             if value == -1:
                 logger.info(f"Current Death Link Amnesty is set to: {self.ctx.deathlink_amnesty}")
-                return
+                return True
             else:
-                value = int(value)
-                if value < 0 or value > 10:
-                    logger.info("Invalid argument, amnesty value must be between 0 and 10")
-                    return
-                
-                self.ctx.deathlink_amnesty = value
-                logger.info(f"New Death Link Amnesty Value is: {self.ctx.deathlink_amnesty}")
+                try:
+                    value = int(value)
+                    if value < 0 or value > 10:
+                        raise ValueError
+                    self.ctx.deathlink_amnesty = value
+                    logger.info(f"New Death Link Amnesty Value is: {self.ctx.deathlink_amnesty}")
+                    return True
+                except ValueError:
+                    logger.error("Invalid argument, amnesty value must be between 0 and 10")
+                    return False
 
     def _cmd_ringlink(self, new_state: str = None) -> None:
         """
@@ -164,8 +175,8 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
         changed = False
 
         if not self.ctx.is_connected:
-            logger.info("Not connected to the server.")
-            return
+            logger.error("Not connected to the server.")
+            return False
 
         if new_state != None:
             if new_state.lower() in ["on", "true", "enable"]:  
@@ -175,19 +186,20 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
                     self.ctx.ring_link_enabled = True
                     changed = True
             elif new_state.lower() in ["off", "false", "disable"]:
+                logger.info("Ring Link Disabled")
                 if "RingLink" in self.ctx.tags:
                     self.ctx.tags.remove("RingLink")
                     self.ctx.ring_link_enabled = False
                     changed = True
-                logger.info("Ring Link Disabled")
             else:
-                logger.info("Invalid argument, use 'on' or 'off'")
+                logger.error("Invalid argument, use 'on' or 'off'")
 
             if changed:
                 asyncio.create_task(self.ctx.send_msgs([{"cmd": "ConnectUpdate", "tags": self.ctx.tags}]))
-            return
+            return changed
 
         logger.info(f"Ring Link status: {self.ctx.ring_link_enabled}")
+        return changed
 
     def _cmd_cards(self, *new_state: str) -> None:
         """
@@ -201,12 +213,12 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
         """
         
         if not self.ctx.is_connected:
-            logger.info("Not connected to the server.")
-            return
+            logger.error("Not connected to the server.")
+            return False
 
         if not self.ctx.handler:
-            logger.info("Not connected to a Touhou 18 process")
-            return
+            logger.error("Not connected to a Touhou 18 process")
+            return False
 
         count = 0
         state = " ".join(new_state)
@@ -266,7 +278,10 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
                     count += 1
             logger.info(f"Number of cards received: {count}/52")
         else:
-            logger.info("Incorrect argument given. Use 'Purchased', 'Not Purchased', 'Received', or 'Not Received'")
+            logger.error("Incorrect argument given. Use 'Purchased', 'Not Purchased', 'Received', or 'Not Received'")
+            return False
+
+        return True
         
     def _cmd_random_shop_card(self, state: str = None) -> None:
         """
@@ -284,9 +299,11 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
                 logger.info(f"Guarantee Unpurchased Card Per Shop Pool: Disabled")
                 self.ctx.random_card_per_shop = False
             else:
-                logger.info(f"Invalid argument given. Use 'on' or 'off'")
+                logger.error(f"Invalid argument given. Use 'on' or 'off'")
+                return False
         else:
             logger.info(f"Guarantee Unpurchased Card Per Shop Pool Status: {self.ctx.random_card_per_shop}")
+        return True
 
     def _cmd_set_shop_card(self, *state: str) -> None:
         """
@@ -298,23 +315,23 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
         """
 
         if not self.ctx.is_connected:
-            logger.info("Not connected to the server.")
-            return
+            logger.error("Not connected to the server.")
+            return False
 
         if not self.ctx.handler:
-            logger.info("Not connected to a Touhou 18 process")
-            return
+            logger.error("Not connected to a Touhou 18 process")
+            return False
 
         if self.ctx.handler.get_game_state() == IN_SHOP:
-            logger.info("Cannot change the set shop card while in a shop.")
-            return
+            logger.error("Cannot change the set shop card while in a shop.")
+            return False
 
         if len(state) != 0:
             full_state = " ".join(state)
 
             if self.ctx.set_shop_card_remaining <= 0:
-                logger.info("Unable to set a card. No more sets remain.")
-                return
+                logger.error("Unable to set a card. No more sets remain.")
+                return False
 
             # Character Name
             fuzzy_state = get_fuzzy_name(full_state, CHARACTER_NAME_TO_CARD_ID.keys())
@@ -331,7 +348,7 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
                 else:
                     self.ctx.set_shop_card = card_id
                     logger.info(f"{CARD_ID_TO_NAME[card_id]} will appear in the next shop.")
-                return
+                return True
 
             # Card Name
             fuzzy_state = get_fuzzy_name(full_state, CARD_NAME_LIST)
@@ -349,11 +366,14 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
                     self.ctx.set_shop_card = card_id
                     logger.info(f"{closest_card} will appear in the next shop.")
             else:
-                logger.info(f"Invalid card name.")
+                logger.error(f"Invalid card name.")
+                return False
             
         else:
             logger.info(f"Set Card Status: {CARD_ID_TO_NAME.get(self.ctx.set_shop_card, None)}")
             logger.info(f"Amount Remaining: {self.ctx.set_shop_card_remaining}")
+
+        return True
             
 class TouhouUMContext(CommonContext):
     """Touhou 18 Game Context"""
@@ -364,45 +384,49 @@ class TouhouUMContext(CommonContext):
 
         self.items_handling = 0b111 # Items from your own world, other worlds, and starting start_inventory_from_pool
         # This needs to be self-defined otherwise the program cannot connect to the server.
-        self.slot_data = True
+        self.slot_data: bool = True
+        self.game: str = DISPLAY_NAME
+        self.command_processor = TouhouUMClientProcessor
 
-        self.item_ap_id_to_name = None
-        self.item_name_to_ap_id = None
-        self.location_ap_id_to_name = None
-        self.location_name_to_ap_id = None
-
-        self.stage_location_mappings = []
-        self.location_id_to_card_id = []
-        self.location_id_to_ending_mapping = []
-
-        self.able_to_check = False
-
-        self.retrieved_last_item_id = False
+        self.item_ap_id_to_name: dict = None
+        self.item_name_to_ap_id: dict = None
+        self.location_ap_id_to_name: dict = None
+        self.location_name_to_ap_id: dict = None
 
         self.options = None
-        self.in_error = None
-        self.is_game_running: bool = False
+        self.able_to_check: bool = False
+        self.custom_data_keys_list: list = None
+
+        self.reset()
+
+    def reset(self) -> None:
+        self.in_error: bool = False
+        self.loading_data_setup: bool = True
+
         self.is_connected: bool = False
-        self.loading_data_setup = True
-        self.game: str = DISPLAY_NAME
-
-        self.location_semaphore_in_use = False
-
-        self.magatama_id: int = 0
-        self.blank_card_id: int = 0
+        self.is_game_running: bool = False
 
         self.all_location_ids: list = []
         self.previous_location_checked: list = []
 
-        self.command_processor = TouhouUMClientProcessor
+        self.handler = None
 
-        self.set_shop_card_remaining = 0
-        self.set_shop_card_max_count = 0
+        self.stage_location_mappings: list = []
+        self.location_id_to_card_id: list = []
+        self.location_id_to_ending_mapping: list = []
+
+        self.set_shop_card_remaining: int = 0
+        self.set_shop_card_max_count: int = 0
+
+        self.magatama_id: int = 0
+        self.blank_card_id: int = 0
+
+        self.location_semaphore_in_use: bool = False
 
         # Gameplay-related variables
-        self.checked_if_owns_stage = False
-        self.random_card_per_shop = False
-        self.set_shop_card = None
+        self.checked_if_owns_stage: bool = False
+        self.random_card_per_shop: bool = False
+        self.set_shop_card: int = None
 
         self.unlocked_characters: list = []
         self.unlocked_cards: list = []
@@ -410,91 +434,33 @@ class TouhouUMContext(CommonContext):
 
         # Deathlink variables
         self.deathlink_enabled: bool = False
-        self.deathlink_trigger: int = None
-        self.deathlink_amnesty: int = None
+        self.deathlink_trigger: int = DEATHLINK_TRIGGER_LIFE
+        self.deathlink_amnesty: int = 0
 
         self.waiting_for_deathlink: bool = False
         self.caused_deathlink: bool = False
         self.died_to_deathlink: bool = False
-        self.last_death_link: float = None
+        self.last_death_link: int = 0
 
         # Ringlink variables
         self.ring_link_enabled: bool = False
         self.last_funds: int = 0
-        self.last_ring_link: float = 0
-        self.ring_link_id: int = None
+        self.last_ring_link: int = 0
+        self.ring_link_id: str = None
 
-        self.received_item_queue: list[NetworkItem] = [] # All items from the server.
-        self.card_item_queue: list = [] # Contains card-related items.
-        self.permanent_item_queue: list = [] # General permanent items such as continues and stages.
-        self.game_item_queue: list = [] # Can only be active while in-stage.
+        # Received item variables
+        self.received_item_queue: list = []
+        self.card_item_queue: list = []
+        self.permanent_item_queue: list = []
+        self.game_item_queue: list = []
 
-        self.all_received_items: list[int] = []
+        self.retrieved_last_item_id: bool = False
+
+        self.all_received_items: list = []
         self.loaded_past_received_items: bool = False
 
         self.last_received_item_index_server: int = -1
-
-        self.custom_data_keys_list: list = None
-        self.data_sent = False
-
-        self.reset()
-
-    def reset(self) -> None:
-        self.in_error = False
-        self.loading_data_setup = True
-
-        self.is_connected = False
-        self.is_game_running = False
-
-        self.retrieved_last_item_id = False
-
-        self.all_location_ids = []
-        self.previous_location_checked = []
-        self.handler = None
-
-        self.stage_location_mappings = []
-        self.location_id_to_card_id = []
-        self.location_id_to_ending_mapping = []
-
-        self.set_shop_card_remaining = 0
-
-        self.checked_if_owns_stage = False
-        self.random_card_per_shop = False
-        self.set_shop_card = None
-
-        self.location_semaphore_in_use = False
-
-        self.magatama_id = 0
-        self.blank_card_id = 0
-
-        self.unlocked_characters = []
-        self.unlocked_cards = []
-        self.unlocked_stages = []
-
-        self.deathlink_enabled = False
-        self.deathlink_trigger = DEATHLINK_TRIGGER_LIFE
-        self.deathlink_amnesty = 1
-
-        self.waiting_for_deathlink = False
-        self.caused_deathlink = False
-        self.died_to_deathlink = False
-        self.last_death_link = 0
-
-        self.ring_link_enabled = False
-        self.last_funds = 0
-        self.last_ring_link = 0
-        self.ring_link_id = None
-
-        self.received_item_queue = []
-        self.card_item_queue = []
-        self.permanent_item_queue = []
-        self.game_item_queue = []
-
-        self.all_received_items = []
-        self.loaded_past_received_items = False
-
-        self.last_received_item_index_server = -1
-        self.data_sent = False
+        self.data_sent: bool = False
 
     def reset_game_data(self):
         if self.handler == None: return
@@ -835,7 +801,6 @@ class TouhouUMContext(CommonContext):
 
         # You'd want to be in the game and know the previous last index if you are to receive stuff.
         while (self.handler is None or self.handler.gameController is None) or not self.retrieved_last_item_id:
-            print("waiting for the game and server reply")
             await asyncio.sleep(0.5)
 
         # You have no items acquired but have had some in a previous session.
@@ -1199,7 +1164,8 @@ class TouhouUMContext(CommonContext):
                             given_resources = False
                             previous_stage = 0
 
-                            if current_stage == 1: self.handler.setContinues(self.handler.continues)
+                            if current_stage == 1:
+                                self.handler.setContinues(self.handler.continues) #TODO make sure this works on extra
                             
 
                     # This specific block is for if the player restarts the game or uses a continue.
@@ -1452,8 +1418,9 @@ class TouhouUMContext(CommonContext):
                             await asyncio.sleep(0.5)
 
                         if (not self.handler.hasCardBeenPurchased(LIFE_CARD) 
-                        and self.handler.getCardUnlockedState(LIFE_CARD)): 
-                            self.set_shop_card = None
+                        and self.handler.getCardUnlockedState(LIFE_CARD)):
+                            if self.set_shop_card == LIFE_CARD: 
+                                self.set_shop_card = None
                             self.handler.purchaseCard(LIFE_CARD)
                             if not self.handler.hasCardBeenReceived(LIFE_CARD):
                                 self.handler.setLives(player_lives)
@@ -1461,7 +1428,8 @@ class TouhouUMContext(CommonContext):
 
                         if (not self.handler.hasCardBeenPurchased(BOMB_CARD) 
                         and self.handler.getCardUnlockedState(BOMB_CARD)): 
-                            self.set_shop_card = None
+                            if self.set_shop_card == BOMB_CARD: 
+                                self.set_shop_card = None
                             self.handler.purchaseCard(BOMB_CARD)
                             if not self.handler.hasCardBeenReceived(BOMB_CARD):
                                 self.handler.setBombs(player_bombs)
@@ -1469,7 +1437,8 @@ class TouhouUMContext(CommonContext):
 
                         if (not self.handler.hasCardBeenPurchased(NAZRIN_CARD) 
                         and self.handler.getCardUnlockedState(NAZRIN_CARD)): 
-                            self.set_shop_card = None
+                            if self.set_shop_card == NAZRIN_CARD: 
+                                self.set_shop_card = None
                             self.handler.purchaseCard(NAZRIN_CARD)
                             if not self.handler.hasCardBeenReceived(NAZRIN_CARD):
                                 self.handler.addFunds(-50)
@@ -1477,7 +1446,8 @@ class TouhouUMContext(CommonContext):
 
                         if (not self.handler.hasCardBeenPurchased(RINGO_CARD) 
                         and self.handler.getCardUnlockedState(RINGO_CARD)):
-                            self.set_shop_card = None
+                            if self.set_shop_card == RINGO_CARD: 
+                                self.set_shop_card = None
                             self.handler.purchaseCard(RINGO_CARD)
 
                             if not self.handler.hasCardBeenReceived(RINGO_CARD):
@@ -1754,21 +1724,19 @@ class TouhouUMContext(CommonContext):
                         # Player died
                         if current_lives > self.handler.getLives():
                             # Deathlink deaths do not count towards the counter.
-                            if self.died_to_deathlink:
+                            if self.waiting_for_deathlink and self.died_to_deathlink:
                                 self.died_to_deathlink = False
                                 self.waiting_for_deathlink = False
                                 current_lives = min(self.handler.getLives(), self.handler.max_lives)    
-                                continue
-
                             # Game Over has lives set to -1 for some reason.
-                            if (self.deathlink_trigger == DEATHLINK_TRIGGER_LIFE or 
-                               (self.deathlink_trigger == DEATHLINK_TRIGGER_GAMEOVER and current_lives == -1)):
+                            elif (self.deathlink_trigger == DEATHLINK_TRIGGER_LIFE or 
+                               (self.deathlink_trigger == DEATHLINK_TRIGGER_GAMEOVER and self.handler.getLives() == -1)):
                                 deathlink_counter += 1
 
                                 # Send the deathlink to your poor and unfortunate friends.
                                 if deathlink_counter >= self.deathlink_amnesty:
-                                    deathlink_counter = 0
                                     await self.send_deathlink() 
+                                    deathlink_counter = 0
                                 else:
                                     logger.info(f"DeathLink: {deathlink_counter}/{self.deathlink_amnesty}")
 
