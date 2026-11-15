@@ -9,11 +9,6 @@ from .variables.stage_constants import *
 class TouhouUMLocation(Location):
     game: str = SHORT_NAME
 
-# Just testing one region for now.
-def create_all_locations(world) -> None:
-    region_ofchoice = world.get_region("Menu")
-    region_ofchoice.add_locations(location_table, TouhouUMLocation)
-
 # Grab a subset of location_table based off names given.
 def get_location_names_with_ids(location_names: list[str]) -> dict[str, int | None]:
     location_dict = {}
@@ -117,3 +112,4 @@ for character in CHARACTER_NAMES:
     location_table[location] = location_offset
     location_id_to_name[location_offset] = location
     location_offset += 1
+

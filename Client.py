@@ -235,11 +235,13 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
                     card_name = (location_id_to_name[id].split("Purchased "))[1]
                     logger.info(card_name)
                     count += 1
+                    '''
                 elif "Unlocked" in location_id_to_name[id]:
                     card_name = (location_id_to_name[id].split("Unlocked "))[1]
                     logger.info(card_name)
                     count += 1
-            logger.info(f"Number of cards not purchased: {count}/52")
+                    '''
+            logger.info(f"Number of cards not purchased: {count}/47")
         elif state.lower() in ["purchased", "true"]:
             logger.info("Cards Purchased:")
 
@@ -252,11 +254,13 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
                     card_name = (location_id_to_name[id].split("Purchased "))[1]
                     logger.info(card_name)
                     count += 1
+                    '''
                 elif "Unlocked" in location_id_to_name[id]:
                     card_name = (location_id_to_name[id].split("Unlocked "))[1]
                     logger.info(card_name)
                     count += 1
-            logger.info(f"Number of cards purchased: {count}/52")
+                    '''
+            logger.info(f"Number of cards purchased: {count}/47")
         elif state.lower() in ["received", "unlocked"]:
             logger.info("Cards Received:")
 
@@ -276,7 +280,7 @@ class TouhouUMClientProcessor(ClientCommandProcessor):
                     card_name = CARD_ID_TO_NAME[i]
                     logger.info(card_name)
                     count += 1
-            logger.info(f"Number of cards received: {count}/52")
+            logger.info(f"Number of cards not received: {count}/52")
         else:
             logger.error("Incorrect argument given. Use 'Purchased', 'Not Purchased', 'Received', or 'Not Received'")
             return False
@@ -627,7 +631,6 @@ class TouhouUMContext(CommonContext):
         if cmd == "SetReply": # Ensure that the last item index received has been updated.
             if args["key"] == self.custom_data_keys_list[0] and args["slot"] == self.slot:
                 self.data_sent = True
-                print("Last item received index has been updated.")
 
     async def send_victory(self) -> None:
         await self.send_msgs([{"cmd": 'StatusUpdate', "status": 30}])
@@ -978,11 +981,7 @@ class TouhouUMContext(CommonContext):
 
         self.all_received_items += item_id_list
 
-        #print(f"init - {self.last_received_item_index_server}")
-
         self.last_received_item_index_server = len(self.all_received_items)
-
-        #print(f"now - {self.last_received_item_index_server}")
 
         asyncio.create_task(self.update_last_item_id())
 
@@ -1043,7 +1042,6 @@ class TouhouUMContext(CommonContext):
                 achieved_victory = achieved_victory and momoyo_victory
 
         if achieved_victory:
-            print("Sending victory")
             asyncio.create_task(self.send_victory())
 
     '''
@@ -1057,8 +1055,6 @@ class TouhouUMContext(CommonContext):
         Stuff that happens while in-stage.
         """
         try:
-            
-            print("Game Loop Init")
 
             difficulty_check = self.options["difficulty_check"]
             lower_difficulty_check = self.options["check_mult_difficulties"]
@@ -1195,7 +1191,6 @@ class TouhouUMContext(CommonContext):
                         # The stage updates before the time so we need a slight buffer just in case.
 
                         if initial_loop_buffer:
-                            print("need to wait")
                             initial_loop_buffer = False
                             await asyncio.sleep(1)
 
@@ -1258,9 +1253,7 @@ class TouhouUMContext(CommonContext):
                         if boss_present:
                             # Boss slain.
                             if not self.handler.isBossActive():
-                                print("boss down")
                                 if not self.handler.isCurrentBossDefeated(boss_counter) and self.handler.getLives() != -1:
-                                    print("new boss down")
                                     self.handler.setCurrentBossDefeated(boss_counter, difficulty_check, lower_difficulty_check)
                                     await self.update_locations_checked()
                                 boss_present = False
@@ -1325,8 +1318,6 @@ class TouhouUMContext(CommonContext):
             player_bombs = 0
 
             game_state = -1
-
-            print("Shop Loop Init")
 
             while not self.exit_event.is_set() and self.handler and not self.in_error:
                 await asyncio.sleep(0.5)
@@ -1482,7 +1473,6 @@ class TouhouUMContext(CommonContext):
 		Loop for dealing with main menu stuff.
         Mostly preventing you from going to places you should not be.
 		"""
-        print("Menu Loop Init")
 
         try:
             MAIN_MENU_SELECT = 1
@@ -1592,7 +1582,6 @@ class TouhouUMContext(CommonContext):
                     # Since unlock state is a factor in determining whether you've purchased an item card, disable in stage if not purchased.
                     for item_card in ITEM_CARDS:
                         if not self.handler.hasCardBeenPurchased(item_card):
-                            print(f"{item_card} not purchased")
                             self.handler.setCardUnlockState(item_card, 0)
 
         except Exception as e:
@@ -1653,7 +1642,7 @@ class TouhouUMContext(CommonContext):
                                 self.handler.setSpeed([1000, 500])
                                 increased_speed_timer = increased_speed_duration
                             case 502:
-                                print("Trap: Forced to fight Seija")
+                                #print("Trap: Forced to fight Seija")
                                 self.handler.setSpeed([-CHARACTER_SPEEDS[self.handler.getCurrentCharacter()][0],
                                                        -CHARACTER_SPEEDS[self.handler.getCurrentCharacter()][1]])
                                 inverse_speed_timer = inverse_speed_duration
@@ -1695,7 +1684,6 @@ class TouhouUMContext(CommonContext):
         """
         Loop that handles death link.
         """
-        print("death link loop init")
         try:
             active_deathlink = False
             entered_stage = False
@@ -1753,7 +1741,6 @@ class TouhouUMContext(CommonContext):
         """
         Loop that handles ring link.
         """
-        print("ring link loop init")
         try:
             active_ringlink = False
             current_funds = 0
@@ -1791,11 +1778,10 @@ class TouhouUMContext(CommonContext):
             logger.error(traceback.format_exc())
             self.in_error = True
 
-    async def message_loop(self):
+    #async def message_loop(self):
         """
         Loop which handles displaying messages.
         """
-        print("soon")
 
 async def game_watcher(ctx):
     """
@@ -1820,7 +1806,6 @@ async def game_watcher(ctx):
             # Receive server data
             if not ctx.retrieved_last_item_id:
                 try:
-                    print("Getting previously collected items from server.")
                     await ctx.get_custom_data_from_server()
                 except:
                     ctx.inError = True

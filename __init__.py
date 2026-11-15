@@ -48,6 +48,15 @@ class TouhouUMWorld(World):
         if self.options.exclude_lunatic:
             self.push_precollected(self.create_item("Lower Difficulty"))
 
+        if self.options.stage2_unlock:
+            if self.options.stage_unlock == 0:
+                self.push_precollected(self.create_item("Next Stage"))
+            else:
+                self.push_precollected(self.create_item("[Reimu] Next Stage"))
+                self.push_precollected(self.create_item("[Marisa] Next Stage"))
+                self.push_precollected(self.create_item("[Sakuya] Next Stage"))
+                self.push_precollected(self.create_item("[Sanae] Next Stage"))
+
         for i in range(self.options.init_max_lives):
             self.push_precollected(self.create_item("+1 Max Life"))
 
@@ -60,7 +69,6 @@ class TouhouUMWorld(World):
   
     def create_regions(self) -> None:
         Regions.create_and_connect_regions(self)
-        #Locations.create_all_locations(self)
 
     def create_items(self) -> None:
         Items.create_all_items(self)
@@ -83,7 +91,8 @@ class TouhouUMWorld(World):
             "max_bomb_item", "deathlink", 
             "deathlink_trigger", "deathlink_amnesty",
             "ring_link", "new_card_per_shop",
-            "set_shop_card_count", "continue_item_count"
+            "set_shop_card_count", "continue_item_count",
+            "stage2_unlock"
         )
 
         return data

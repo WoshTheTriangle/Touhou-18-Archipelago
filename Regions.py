@@ -2,14 +2,17 @@ from BaseClasses import Entrance, Region
 from .Locations import *
 from .variables.stage_constants import *
 from .variables.card_constants import *
+from .Items import TouhouUMItem
 
 def create_and_connect_regions(world) -> None:
     create_regions(world)
     connect_regions(world)
-    #create_events(world)
+    create_events(world)
 
 def create_events(world) -> None:
-    print("events someday")
+    # Just contains the victory event so far.
+    init_region = world.get_region("Menu")
+    init_region.add_event("All Goals Achieved", "Victory!", location_type = TouhouUMLocation, item_type = TouhouUMItem)
 
 def create_regions(world) -> None:
     exclude_lunatic = world.options.exclude_lunatic
@@ -145,9 +148,6 @@ def generate_regions(world, exclude_lunatic, extra_stage_acquire, split_by_diffi
     blank_and_magatama_location = TouhouUMLocation(world.player, f"Unlocked {MAGATAMA_CARD_NAME}", location_table[f"Unlocked {MAGATAMA_CARD_NAME}"], init_region)
     blank_and_magatama_location.place_locked_item(world.create_item(MAGATAMA_CARD_NAME))
     stage_region.locations.append(blank_and_magatama_location)
-
-    #for location in stage_region.locations:
-    #    print(f"\nAAA {location.item}")
 
     return region_list
 

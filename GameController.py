@@ -31,6 +31,7 @@ class GameController:
         self.addrDifficulty = self.pm.base_address + ADDR_DIFFICULTY
         
         self.addrTimeInStage = self.pm.base_address + ADDR_TIME_IN_STAGE
+        self.soundPtr = self.pm.base_address + ADDR_SOUND
 
         # Large pointers which hold lots of data.
         self.shopPtr = self.pm.base_address + ADDR_SHOP_PTR
@@ -119,6 +120,10 @@ class GameController:
     def setPlayerState(self, value: int) -> None:
         address = getPointerAddress(self.pm, self.playerPtr, ADDR_PLAYER_STATE_OFFSET)
         self.pm.write_int(address, value)
+
+        if value == 4:
+            # 2 is the PICHUUN sound effect.
+            self.pm.write_int(self.soundPtr, 2)
 
     # Return values follow the character constants in stage_constants.py
     # 0 - Reimu

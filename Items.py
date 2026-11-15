@@ -54,53 +54,45 @@ def create_item_with_correct_classification(world, name: str) -> TouhouUMItem:
 def create_all_items(world) -> None:
     item_pool: List[Item] = []
     for item, data in item_table.items():
+        quantity = data.max_quantity
 
         # Less Difficulty Options
         if data.code == 4 and world.options.exclude_lunatic:
-            for i in range(3):
-                item_pool.append(world.create_item(item))
-            continue
+            quantity = 2
 
         # Amount of progressive lives if there is a max limit without items increasing the cap.
         if data.code == 1 and not world.options.max_life_item:
-            for i in range(world.options.init_max_lives):
-                item_pool.append(world.create_item(item))
-            continue
+            quantity = world.options.init_max_lives
         
         # Amount of progressive bombs if there is a max limit without items increasing the cap.
         if data.code == 2 and not world.options.max_bomb_item:
-            for i in range(world.options.init_max_bombs):
-                item_pool.append(world.create_item(item))
-            continue
+            quantity = world.options.init_max_bombs
 
         # Adding continues.
         if data.code == 3:
-            for i in range(world.options.continue_item_count):
-                item_pool.append(world.create_item(item))
-            continue
+            quantity = world.options.continue_item_count
 
         # Adding max lives
         if data.code == 12 and world.options.max_life_item:
-            for i in range(7 - world.options.init_max_lives):
-                item_pool.append(world.create_item(item))
-            continue
+            quantity = 7 - world.options.init_max_lives
             
         # Adding max bombs.
         if data.code == 13 and world.options.max_bomb_item:
-            for i in range(7 - world.options.init_max_bombs):
-                item_pool.append(world.create_item(item))
-            continue
+            quantity = 7 - world.options.init_max_bombs
 
         if data.code == 100: # Reimu is pre-given
             continue
 
         # Global Character Stage Unlocks.
         if data.code == 200 and world.options.stage_unlock == STAGE_GLOBAL:
+            # Stage 2 is already unlocked.
+            if world.options.stage2_unlock:
+                quantity -= 1
+
             # Extra stage is an additional linear next stage.
             if world.options.extra_stage == EXTRA_LINEAR:
-                for i in range(data.max_quantity + 1):
-                    item_pool.append(world.create_item(item))
-                continue
+                quantity += 1
+
         elif data.code == 200 and world.options.stage_unlock != STAGE_GLOBAL:
             continue
 
@@ -110,11 +102,13 @@ def create_all_items(world) -> None:
 
         # Per Character Stage Unlocks.
         if (data.code >= 201 and data.code <= 204) and world.options.stage_unlock == STAGE_PER_CHARACTER:
+            # Stage 2 is already unlocked.
+            if world.options.stage2_unlock:
+                quantity -= 1
+
             # Extra stage is an additional linear next stage.
             if world.options.extra_stage == EXTRA_LINEAR:
-                for i in range(data.max_quantity + 1):
-                    item_pool.append(world.create_item(item))
-                continue
+                quantity += 1
         elif (data.code >= 201 and data.code <= 204) and world.options.stage_unlock != STAGE_PER_CHARACTER:
             continue
 
@@ -130,10 +124,8 @@ def create_all_items(world) -> None:
             continue
 
         # Normal item which can be treated normally.
-        for i in range(data.max_quantity):
+        for i in range(quantity):
             item_pool.append(world.create_item(item))
-
-    
 
     # Filling up remaining required item slots.
     item_length = len(item_pool)
@@ -159,7 +151,7 @@ item_table: Dict[str, TouhouUMItemData] = {
     "+1 Starting Life" : TouhouUMItemData(CATEGORY_STAGE, 1, ItemClassification.progression, 7),
     "+1 Starting Bomb" : TouhouUMItemData(CATEGORY_STAGE, 2, ItemClassification.progression, 7),
     "+1 Continue" : TouhouUMItemData(CATEGORY_ITEM, 3, ItemClassification.useful, 5),
-    "Lower Difficulty" : TouhouUMItemData(CATEGORY_ITEM, 4, ItemClassification.progression, 3), #maybe useful later idk
+    "Lower Difficulty" : TouhouUMItemData(CATEGORY_ITEM, 4, ItemClassification.progression, 3),
     "Extra Starting Card Slot" : TouhouUMItemData(CATEGORY_ITEM, 5, ItemClassification.useful, 2),
     "+100 Funds" : TouhouUMItemData(CATEGORY_ITEM, 8, ItemClassification.useful, 3),
     "+50 Power" : TouhouUMItemData(CATEGORY_ITEM, 9, ItemClassification.useful, 3),

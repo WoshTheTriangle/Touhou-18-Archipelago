@@ -151,6 +151,8 @@ def set_all_location_rules(world) -> None:
 def set_completion_condition(world) -> None:
     # Frogs go mlem mlem, snakes go psbpspsbsb
     # Thanks for comign folks!
+    victory_location = world.get_location("All Goals Achieved")
+
     goal_condition = world.options.goal.value
     character_count = world.options.ending_req.value
     card_goal_count = world.options.card_req.value
@@ -190,4 +192,6 @@ def set_completion_condition(world) -> None:
         if world.options.extra_stage != EXTRA_NOT_INCLUDED:
             goal_rule = goal_rule & momoyo_rule
 
-    world.set_completion_rule(goal_rule) 
+    world.set_rule(victory_location, goal_rule)
+
+    world.set_completion_rule(Has("Victory!")) 

@@ -111,6 +111,13 @@ class ExcludeLunatic(Toggle):
     """
     display_name = "Exclude Lunatic"
 
+class StartWithStage2(Toggle):
+    """
+    Start with Stage 2 unlocked.
+    If Stage Unlocks was set to Per Character, Stage 2 is unlocked for every character.
+    """
+    display_name = "Start With Stage 2 Unlocked"
+
 class GuaranteeUnpurchasedCardPerShop(Toggle):
     """
     Guarantee that every shop pool has at least one unpurchased card present.
@@ -238,6 +245,7 @@ class Th18Options(PerGameCommonOptions):
     difficulty_check: DifficultyCheck
     check_mult_difficulties: CheckMultipleDifficulty
     exclude_lunatic: ExcludeLunatic
+    stage2_unlock: StartWithStage2
     new_card_per_shop: GuaranteeUnpurchasedCardPerShop
     set_shop_card_count: GuaranteeCardPerShopCount
     init_max_lives: InitLivesLimit

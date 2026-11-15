@@ -132,8 +132,8 @@ class GameHandler:
     def unlock_character(self, character: int) -> None:
         value = self.charactersUnlocked.get(character, -1)
         
+        # Tried to unlock a character that does not exist.
         if value == -1:
-            print("Tried to unlock a character which does not exist")
             return
         
         self.charactersUnlocked[character] = True
@@ -204,8 +204,6 @@ class GameHandler:
         elif goal_id == GOAL_CHIMATA_BLANK:
             goal_completed = self.getAchievementState(character * 2)
 
-        if goal_completed:
-            print("chimata successfully checked")
         return goal_completed
 
     # Essentially hashing completions for review in checking if goals have been met.
@@ -264,7 +262,6 @@ class GameHandler:
 
     # Force the player back to the main menu from anywhere.
     def forceToMainMenu(self) -> None:
-        print("Force A")
         self.gameController.force_to_main_menu()
 
     # Unlocks or locks extra stage for a character chosen.
@@ -465,10 +462,8 @@ class GameHandler:
             
             if(self.cardsUnlocked[card_ids[i]] == False):
                 self.gameController.disableCard(card_addresses[i])
-                print("DENIED")
             elif(self.cardsUnlocked[card_ids[i]] == True):
                 self.gameController.enableCard(card_addresses[i])
-                print("We are in")
 
     def updateEquipmentOptionState(self) -> None:
         card_ids = self.getHeldCards()
